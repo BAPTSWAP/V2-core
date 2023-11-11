@@ -1,0 +1,24 @@
+[package]
+name = "BaptswapV2"
+version = "1.0.0"
+authors = []
+
+[addresses]
+
+baptswap_v2 = "bd5b181e7295edf3d4d584e4df8e5ea167ec56c819de4f193ff73e65bec8f009"
+dev_2 = "97c8aca6082f2ef7a0046c72eb81ebf203ca23086baf15557579570c86a89fd3"
+
+[dev-addresses]
+
+[dependencies.AptosFramework]
+git = "https://github.com/aptos-labs/aptos-core.git"
+rev = "mainnet"
+subdir = "aptos-move/framework/aptos-framework"
+
+[dependencies.BaptSwap]
+local = "./packages/BaptSwap"
+
+[dependencies.CoinDeployer]
+local = "./packages/CoinDeployer"
+
+[dev-dependencies]
