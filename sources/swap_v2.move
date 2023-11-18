@@ -1563,17 +1563,15 @@ module baptswap_v2::swap_v2 {
             // swap it to APT
             let coin_y_out = swap_exact_fee_to_apt<X>(coin_x_out);
             // deposit APT to treasury
-            let swap_info = borrow_global<SwapInfo>(RESOURCE_ACCOUNT);
             // assert!(borrow_global<SwapInfo>(RESOURCE_ACCOUNT).fee_to == RESOURCE_ACCOUNT, 1);
-            coin::deposit<APT>(swap_info.fee_to, coin_y_out);
+            coin::deposit<APT>(fee_to(), coin_y_out);
             // update reserves
             update_reserves<X, Y>();
         } else {
             let metadata = borrow_global_mut<TokenPairMetadata<APT, Y>>(RESOURCE_ACCOUNT);
-            let swap_info = borrow_global<SwapInfo>(RESOURCE_ACCOUNT);
             // if X is APT, extract and deposit directly
             let dex_fee_coins = coin::extract<APT>(&mut metadata.balance_x, ((amount_to_liquidity + amount_to_treasury) as u64));
-            coin::deposit<APT>(swap_info.fee_to, dex_fee_coins);
+            coin::deposit<APT>(fee_to(), dex_fee_coins);
             // update reserves
             update_reserves<X, Y>();
         }
