@@ -79,7 +79,7 @@ module baptswap_v2::swap_v2 {
     // ---------
 
     // addresses
-    const ZERO_ACCOUNT: address = @zero;
+    const TREASURY_ACCOUNT: address = @bapt_framework;  // TODO: to be set
     const DEFAULT_ADMIN: address = @default_admin;
     const RESOURCE_ACCOUNT: address = @baptswap_v2;
     const DEV: address = @dev_2;
@@ -235,7 +235,7 @@ module baptswap_v2::swap_v2 {
         let resource_signer = account::create_signer_with_capability(&signer_cap);
         move_to(&resource_signer, SwapInfo {
             signer_cap,
-            fee_to: ZERO_ACCOUNT,
+            fee_to: TREASURY_ACCOUNT,  
             admin: DEFAULT_ADMIN,
             liquidity_fee_modifier: 30,  // 0.3%
             treasury_fee_modifier: 60,   // 0.6%
@@ -932,7 +932,7 @@ module baptswap_v2::swap_v2 {
     ): (Coin<X>, Coin<Y>) acquires SwapInfo, TokenPairReserve, TokenPairMetadata, TokenPairRewardsPool {
         // Grab token pair metadata
         let metadata = borrow_global_mut<TokenPairMetadata<X, Y>>(RESOURCE_ACCOUNT); 
-        // get the value of coins in in u64
+        // get the value of coins in u64
         let amount_in = coin::value<X>(&coins_in);
 
         // deposit amount_in x into balance x
@@ -1177,9 +1177,11 @@ module baptswap_v2::swap_v2 {
 
         let pool = borrow_global_mut<TokenPairRewardsPool<X, Y>>(RESOURCE_ACCOUNT);
 
-        (pool.staked_tokens, coin::value(&pool.balance_x), coin::value(&pool.balance_y),
-         pool.magnified_dividends_per_share_x, pool.magnified_dividends_per_share_y,
-         pool.precision_factor, pool.is_x_staked)
+        (
+            pool.staked_tokens, coin::value(&pool.balance_x), coin::value(&pool.balance_y),
+            pool.magnified_dividends_per_share_x, pool.magnified_dividends_per_share_y,
+            pool.precision_factor, pool.is_x_staked
+        )
     }
 
     #[view]
@@ -1550,7 +1552,7 @@ module baptswap_v2::swap_v2 {
     }
 
     // used in swap functions to distribute DEX fees and update reserves correspondingly
-    fun distribute_dex_fees<X, Y>(amount_in: u64) acquires SwapInfo, TokenPairReserve, TokenPairMetadata, TokenPairRewardsPool {
+    fun distribute_dex_fees<X, Y>(amount_in: u64) acquires SwapInfo, TokenPairReserve, TokenPairMetadata {
         // distribute DEX fees to dex owner; converted automatically to APT
         let (amount_to_liquidity, amount_to_treasury) = calculate_dex_fees_amounts<X>(amount_in);
         // if X is not APT, swap the amounts into APT
@@ -1558,14 +1560,14 @@ module baptswap_v2::swap_v2 {
             let metadata = borrow_global_mut<TokenPairMetadata<X, Y>>(RESOURCE_ACCOUNT);
             // extract it from balance x from the metadata
             let coin_x_out = coin::extract<X>(&mut metadata.balance_x, amount_in);
-            // update reserves
-            update_reserves<X, Y>();
             // swap it to APT
-            let (coins_x_out, coin_y_out) = swap_exact_x_to_y_direct<X, APT>(coin_x_out);
-            coin::destroy_zero(coins_x_out); // or others ways to drop `coins_x_out`
+            let coin_y_out = swap_exact_fee_to_apt<X>(coin_x_out);
             // deposit APT to treasury
             let swap_info = borrow_global<SwapInfo>(RESOURCE_ACCOUNT);
+            // assert!(borrow_global<SwapInfo>(RESOURCE_ACCOUNT).fee_to == RESOURCE_ACCOUNT, 1);
             coin::deposit<APT>(swap_info.fee_to, coin_y_out);
+            // update reserves
+            update_reserves<X, Y>();
         } else {
             let metadata = borrow_global_mut<TokenPairMetadata<APT, Y>>(RESOURCE_ACCOUNT);
             let swap_info = borrow_global<SwapInfo>(RESOURCE_ACCOUNT);
@@ -1575,6 +1577,73 @@ module baptswap_v2::swap_v2 {
             // update reserves
             update_reserves<X, Y>();
         }
+    }
+
+    // swap function for treasury fee; returns only the amount in APT
+    fun swap_exact_fee_to_apt<X>(coins_in: Coin<X>): Coin<APT> acquires TokenPairReserve, TokenPairMetadata {
+        // Grab token pair metadata
+        let metadata = borrow_global_mut<TokenPairMetadata<X, APT>>(RESOURCE_ACCOUNT); 
+        // get the value of coins in u64
+        let amount_in = coin::value<X>(&coins_in);
+
+        // deposit amount_in x into balance x
+        coin::merge(&mut metadata.balance_x, coins_in);
+
+        // Get amount y
+        let (coins_x_out, coins_y_out) = swap_with_no_fee<X, APT>(0, amount_in);
+        coin::destroy_zero(coins_x_out); // or others ways to drop `coins_x_out`
+
+        coins_y_out
+    }
+
+    fun swap_with_no_fee<X, APT>(
+        amount_x_out: u64,
+        amount_y_out: u64
+    ): (Coin<X>, Coin<APT>) acquires TokenPairReserve, TokenPairMetadata {
+        assert!(amount_x_out > 0 || amount_y_out > 0, ERROR_INSUFFICIENT_OUTPUT_AMOUNT);
+
+        let reserves = borrow_global_mut<TokenPairReserve<X, APT>>(RESOURCE_ACCOUNT);
+        assert!(amount_x_out < reserves.reserve_x && amount_y_out < reserves.reserve_y, ERROR_INSUFFICIENT_LIQUIDITY);
+
+        let metadata = borrow_global_mut<TokenPairMetadata<X, APT>>(RESOURCE_ACCOUNT);
+
+        let coins_x_out = coin::zero<X>();
+        let coins_y_out = coin::zero<APT>();
+        if (amount_x_out > 0) coin::merge(&mut coins_x_out, extract_x(amount_x_out, metadata));
+        if (amount_y_out > 0) coin::merge(&mut coins_y_out, extract_y(amount_y_out, metadata));
+        let (balance_x, balance_y) = token_balances<X, APT>();
+
+        let amount_x_in = if (balance_x > reserves.reserve_x - amount_x_out) {
+            balance_x - (reserves.reserve_x - amount_x_out)
+        } else { 0 };
+        let amount_y_in = if (balance_y > reserves.reserve_y - amount_y_out) {
+            balance_y - (reserves.reserve_y - amount_y_out)
+        } else { 0 };
+
+        assert!(amount_x_in > 0 || amount_y_in > 0, ERROR_INSUFFICIENT_INPUT_AMOUNT);
+
+        let prec = (PRECISION as u128);
+        let balance_x_adjusted = (balance_x as u128) * prec - (amount_x_in as u128);
+        let balance_y_adjusted = (balance_y as u128) * prec - (amount_y_in as u128);
+        let reserve_x_adjusted = (reserves.reserve_x as u128) * prec;
+        let reserve_y_adjusted = (reserves.reserve_y as u128) * prec;
+
+        // No need to use u256 when balance_x_adjusted * balance_y_adjusted and reserve_x_adjusted * reserve_y_adjusted are less than MAX_U128.
+        let compare_result = if(
+            balance_x_adjusted > 0 
+            && reserve_x_adjusted > 0 
+            && MAX_U128 / balance_x_adjusted > balance_y_adjusted 
+            && MAX_U128 / reserve_x_adjusted > reserve_y_adjusted
+        ) { balance_x_adjusted * balance_y_adjusted >= reserve_x_adjusted * reserve_y_adjusted } else {
+            let p = u256::mul_u128(balance_x_adjusted, balance_y_adjusted);
+            let k = u256::mul_u128(reserve_x_adjusted, reserve_y_adjusted);
+            u256::ge(&p, &k)
+        };
+        assert!(compare_result, ERROR_K);
+
+        update(balance_x, balance_y, reserves);
+
+        (coins_x_out, coins_y_out)
     }
 
     fun update_reserves<X, Y>() acquires TokenPairReserve, TokenPairMetadata {
@@ -1718,9 +1787,12 @@ module baptswap_v2::swap_v2 {
         let reserve_y_adjusted = (reserves.reserve_y as u128) * prec;
 
         // No need to use u256 when balance_x_adjusted * balance_y_adjusted and reserve_x_adjusted * reserve_y_adjusted are less than MAX_U128.
-        let compare_result = if(balance_x_adjusted > 0 && reserve_x_adjusted > 0 && MAX_U128 / balance_x_adjusted > balance_y_adjusted && MAX_U128 / reserve_x_adjusted > reserve_y_adjusted){
-            balance_x_adjusted * balance_y_adjusted >= reserve_x_adjusted * reserve_y_adjusted
-        } else {
+        let compare_result = if(
+            balance_x_adjusted > 0 
+            && reserve_x_adjusted > 0 
+            && MAX_U128 / balance_x_adjusted > balance_y_adjusted 
+            && MAX_U128 / reserve_x_adjusted > reserve_y_adjusted
+        ) { balance_x_adjusted * balance_y_adjusted >= reserve_x_adjusted * reserve_y_adjusted } else {
             let p = u256::mul_u128(balance_x_adjusted, balance_y_adjusted);
             let k = u256::mul_u128(reserve_x_adjusted, reserve_y_adjusted);
             u256::ge(&p, &k)
