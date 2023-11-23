@@ -542,13 +542,16 @@ module baptswap_v2::swap_v2 {
                 coin::deposit(signer::address_of(sender), y_out);
             };
 
-            // Tranfer staked tokens out
+            // Transfer staked tokens out
             if (amount > 0) {
                 transfer_out<X>(&mut user_info.staked_tokens, sender, amount);
                 pool_info.staked_tokens = pool_info.staked_tokens - amount;
+                // update magnified dividends per share for X
+                pool_info.magnified_dividends_per_share_x = pool_info.magnified_dividends_per_share_x + (amount * pool_info.precision_factor / coin::value(&pool_info.staked_tokens));
+                pool_info.magnified_dividends_per_share_y = pool_info.magnified_dividends_per_share_y + (amount * pool_info.precision_factor / coin::value(&pool_info.staked_tokens));
             };
 
-            //Calculate and update user corrections
+            // Calculate and update user corrections
             user_info.reward_debt_x = reward_debt(coin::value(&user_info.staked_tokens), pool_info.magnified_dividends_per_share_x, pool_info.precision_factor);
             user_info.reward_debt_y = reward_debt(coin::value(&user_info.staked_tokens), pool_info.magnified_dividends_per_share_y, pool_info.precision_factor);
 
@@ -576,7 +579,7 @@ module baptswap_v2::swap_v2 {
                 coin::deposit(signer::address_of(sender), y_out);
             };
 
-            // Tranfer staked tokens out
+            // Transfer staked tokens out
             if (amount > 0) {
                 transfer_out<Y>(&mut user_info.staked_tokens, sender, amount);
                 pool_info.staked_tokens = pool_info.staked_tokens - amount;
