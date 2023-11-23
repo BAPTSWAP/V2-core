@@ -735,31 +735,21 @@ module baptswap_v2::swap_v2 {
         sender: &signer,  
         activate: bool
     ) acquires TokenInfo, TokenPairMetadata {
+        // assert cointype is either X or Y
+        assert!(type_info::type_of<CoinType>() == type_info::type_of<X>() || type_info::type_of<CoinType>() == type_info::type_of<Y>(), 1);
         // assert sender is token owner
         assert!(is_token_owner<CoinType>(sender), ERROR_NOT_OWNER);
         // TODO: assert TokenInfo<CoinType> is registered in the pair
-
+        
         let metadata = borrow_global_mut<TokenPairMetadata<X, Y>>(RESOURCE_ACCOUNT);
         let token_info = borrow_global<TokenInfo<CoinType>>(signer::address_of(sender));
-        // if cointype = x
-        if (type_info::type_of<CoinType>() == type_info::type_of<X>()) {
-            // if activate = true
-            if (activate == true) {
-                metadata.liquidity_fee = metadata.liquidity_fee + token_info.liquidity_fee_modifier;
-            // if activate = false
-            } else {
-                metadata.liquidity_fee = metadata.liquidity_fee - token_info.liquidity_fee_modifier;
-            }
-        // if cointype = y
-        } else if (type_info::type_of<CoinType>() == type_info::type_of<Y>()) {
-            // if activate = true
-            if (activate == true) {
-                metadata.liquidity_fee = metadata.liquidity_fee + token_info.liquidity_fee_modifier;
-            // if activate = false
-            } else {
-                metadata.liquidity_fee = metadata.liquidity_fee - token_info.liquidity_fee_modifier;
-            }
-        } else { assert!(false, 1); }
+
+        if (activate) {
+            metadata.liquidity_fee = metadata.liquidity_fee + token_info.liquidity_fee_modifier;
+        } else {
+            metadata.liquidity_fee = metadata.liquidity_fee - token_info.liquidity_fee_modifier;
+        }
+
     }
 
     // toggle team fee
