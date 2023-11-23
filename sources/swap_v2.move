@@ -1586,7 +1586,7 @@ module baptswap_v2::swap_v2 {
                 let rewards_pool = borrow_global_mut<TokenPairRewardsPool<X, Y>>(RESOURCE_ACCOUNT);
                 let rewards_coins = coin::extract(&mut metadata.balance_x, (amount_to_rewards as u64));
 
-                update_pool<X,Y>(rewards_pool, coin::value(&rewards_coins), 0);
+                update_pool<X, Y>(rewards_pool, coin::value(&rewards_coins), 0);
                 coin::merge(&mut rewards_pool.balance_x, rewards_coins);
             };
             coin::merge(&mut metadata.team_balance_x, team_coins);
@@ -1611,7 +1611,7 @@ module baptswap_v2::swap_v2 {
                 let rewards_pool = borrow_global_mut<TokenPairRewardsPool<X, Y>>(RESOURCE_ACCOUNT);
                 let rewards_coins = coin::extract(&mut metadata.balance_y, (amount_to_rewards as u64));
 
-                update_pool<X,Y>(rewards_pool, coin::value(&rewards_coins), 0);
+                update_pool<X, Y>(rewards_pool, 0, coin::value(&rewards_coins));
                 coin::merge(&mut rewards_pool.balance_y, rewards_coins);
             };
             coin::merge(&mut metadata.team_balance_y, team_coins);
