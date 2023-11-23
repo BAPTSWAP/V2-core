@@ -776,7 +776,7 @@ module baptswap_v2::swap_v2 {
         } else { assert!(false, 1); }
     }
 
-    // toggle liquidity fee
+    // toggle rewards fee for a token in a token pair
     public entry fun toggle_fee_on_transfer_rewards_fee<CoinType, X, Y>(
         sender: &signer,
         activate: bool,
