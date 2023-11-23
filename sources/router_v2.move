@@ -62,7 +62,6 @@ module baptswap_v2::router_v2 {
         sender: &signer,
         is_x_staked: bool
     ) {
-        assert!(((swap_v2::is_pair_created<X, Y>() || swap_v2::is_pair_created<Y, X>())), E_PAIR_NOT_CREATED);
         assert!(!((swap_v2::is_pool_created<X, Y>() || swap_v2::is_pool_created<Y, X>())), E_POOL_EXISTS);
 
         if (swap_utils::sort_token_type<X, Y>()) {

@@ -283,19 +283,11 @@ module baptswap_v2::swap_v2 {
     ) acquires SwapInfo {
         assert!(is_pair_created<X, Y>(), ERROR_PAIR_NOT_CREATED);
         assert!(!exists<TokenPairRewardsPool<X, Y>>(RESOURCE_ACCOUNT), ERROR_ALREADY_INITIALIZED);
-
-        let sender_addr = signer::address_of(sender);
-
         // Assert initializer is the owner of either X or Y
         assert!(is_token_owner<X>(sender) || is_token_owner<Y>(sender), ERROR_NOT_OWNER);
-
         // Assert either of the fee_on_transfer is intialized 
         // TODO: and != 0?
-        assert!(
-            is_fee_on_transfer_created<X>(sender)
-            || is_fee_on_transfer_created<Y>(sender), 
-            ERROR_FEE_ON_TRANSFER_NOT_INITIALIZED
-        );
+        assert!(is_fee_on_transfer_created<X>(sender) || is_fee_on_transfer_created<Y>(sender), ERROR_FEE_ON_TRANSFER_NOT_INITIALIZED);
         
         // Create the pool resource
         let swap_info = borrow_global_mut<SwapInfo>(RESOURCE_ACCOUNT);
@@ -740,7 +732,7 @@ module baptswap_v2::swap_v2 {
         // assert sender is token owner
         assert!(is_token_owner<CoinType>(sender), ERROR_NOT_OWNER);
         // TODO: assert TokenInfo<CoinType> is registered in the pair
-        
+
         let metadata = borrow_global_mut<TokenPairMetadata<X, Y>>(RESOURCE_ACCOUNT);
         let token_info = borrow_global<TokenInfo<CoinType>>(signer::address_of(sender));
 

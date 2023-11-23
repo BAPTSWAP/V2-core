@@ -18,7 +18,7 @@
 | SV2-9 |  ❌  |  |
 | SV2-10 |  ❌  |  |
 | SV2-11 |  ❌  |  | to be the last one to fix; we need to know which constants are used and which are not |
-| SV2-12 |  ❌  |  |
+| SV2-12 |  ✅  |  |
 | SV2-13 |  ❌  |  |
 | SV2-14 |  ❌  |  |
 | SV2-15 |  ❌  |  |
