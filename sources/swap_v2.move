@@ -723,15 +723,15 @@ module baptswap_v2::swap_v2 {
         activate: bool,
     ) acquires TokenInfo, TokenPairMetadata {
         // update new fees based on "activate" variable
-        toggle_individual_token_liquidity_fee<CoinType, X, Y>(sender, activate);
-        toggle_individual_token_team_fee<CoinType, X, Y>(sender, activate);
-        toggle_individual_token_rewards_fee<CoinType, X, Y>(sender, activate);
+        toggle_fee_on_transfer_liquidity_fee<CoinType, X, Y>(sender, activate);
+        toggle_fee_on_transfer_team_fee<CoinType, X, Y>(sender, activate);
+        toggle_fee_on_transfer_rewards_fee<CoinType, X, Y>(sender, activate);
 
         // TODO: events
     }
 
     // Toggle liquidity fee
-    public entry fun toggle_individual_token_liquidity_fee<CoinType, X, Y>(
+    public entry fun toggle_fee_on_transfer_liquidity_fee<CoinType, X, Y>(
         sender: &signer,  
         activate: bool
     ) acquires TokenInfo, TokenPairMetadata {
@@ -763,7 +763,7 @@ module baptswap_v2::swap_v2 {
     }
 
     // toggle team fee
-    public entry fun toggle_individual_token_team_fee<CoinType, X, Y>(
+    public entry fun toggle_fee_on_transfer_team_fee<CoinType, X, Y>(
         sender: &signer, 
         activate: bool,
     ) acquires TokenInfo, TokenPairMetadata {
@@ -795,7 +795,7 @@ module baptswap_v2::swap_v2 {
     }
 
     // toggle liquidity fee
-    public entry fun toggle_individual_token_rewards_fee<CoinType, X, Y>(
+    public entry fun toggle_fee_on_transfer_rewards_fee<CoinType, X, Y>(
         sender: &signer,
         activate: bool,
     ) acquires TokenInfo, TokenPairMetadata {
@@ -1108,7 +1108,7 @@ module baptswap_v2::swap_v2 {
     // Callable only by token owners
 
     #[view]
-    public fun get_individual_token_liquidity_fee<CoinType>(
+    public fun get_fee_on_transfer_liquidity_fee<CoinType>(
         sender: &signer
     ): u128 acquires TokenInfo {
         let sender_addr = signer::address_of(sender);
@@ -1119,7 +1119,7 @@ module baptswap_v2::swap_v2 {
     }
 
     #[view]
-    public fun get_individual_token_team_fee<CoinType>(
+    public fun get_fee_on_transfer_team_fee<CoinType>(
         sender: &signer
     ): u128 acquires TokenInfo {
         let sender_addr = signer::address_of(sender);
@@ -1130,7 +1130,7 @@ module baptswap_v2::swap_v2 {
     }
 
     #[view]
-    public fun get_individual_token_rewards_fee<CoinType>(
+    public fun get_fee_on_transfer_rewards_fee<CoinType>(
         sender: &signer
     ): u128 acquires TokenInfo {
         let sender_addr = signer::address_of(sender);
@@ -1260,7 +1260,7 @@ module baptswap_v2::swap_v2 {
     // Callable only by DEX Owner
 
     // set dex liquidity fee
-    public(friend) fun set_dex_liquidity_fee(
+    public entry fun set_dex_liquidity_fee(
         sender: &signer,
         new_fee: u128
     ) acquires SwapInfo {
@@ -1276,7 +1276,7 @@ module baptswap_v2::swap_v2 {
     }
 
     // set dex treasury fee
-    public(friend) fun ser_dex_treasury_fee(
+    public entry fun set_dex_treasury_fee(
         sender: &signer,
         new_fee: u128
     ) acquires SwapInfo {
@@ -1294,7 +1294,7 @@ module baptswap_v2::swap_v2 {
     // Callable only by token owners
 
     // update individual token liquidity fee
-    public(friend) fun set_individual_token_liquidity_fee<CoinType>(
+    public entry fun set_fee_on_transfer_liquidity_fee<CoinType>(
         sender: &signer,
         new_fee: u128
     ) acquires TokenInfo {
@@ -1311,7 +1311,7 @@ module baptswap_v2::swap_v2 {
     }
 
     // set individual token team fee
-    public(friend) fun set_individual_token_team_fee<CoinType>(
+    public entry fun set_fee_on_transfer_team_fee<CoinType>(
         sender: &signer,
         new_fee: u128
     ) acquires TokenInfo {
@@ -1328,7 +1328,7 @@ module baptswap_v2::swap_v2 {
     }
 
     // set individual token rewards fee
-    public(friend) fun set_individual_token_rewards_fee<CoinType>(
+    public(friend) fun set_fee_on_transfer_rewards_fee<CoinType>(
         sender: &signer,
         new_fee: u128
     ) acquires TokenInfo {
