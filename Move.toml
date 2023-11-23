@@ -6,7 +6,7 @@ authors = []
 [addresses]
 
 bapt_framework = "0x54ec91ebea0561c03441e02d1d6ee9e0a48a4cd742647bb96002c359d5152d01"
-baptswap_v2 = "93929b1d6fb9f6b6858a3a816bd8eaed1de5b44e507a1cfcd7761c12a509ab4a"
+baptswap_v2 = "4ee0b37ec67bb47e8d5acf469c5282b93a78145b2ba268782bd7b1e73d411d7c"
 dev_2 = "97c8aca6082f2ef7a0046c72eb81ebf203ca23086baf15557579570c86a89fd3"
 
 # to be set! testing only

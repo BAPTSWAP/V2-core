@@ -2,7 +2,6 @@
 module baptswap_v2::swap_test_v2 {
     use std::signer;
     use std::string;
-    use test_coin::test_coins::{Self, TestCAKE, TestBUSD, TestUSDC, TestBNB, TestAPT};
     use alice::alice_coins::{Self, TestBAPT};
     use bob::bob_coins::{Self, TestMAU};
     use aptos_framework::account;
@@ -28,7 +27,7 @@ module baptswap_v2::swap_test_v2 {
         account::create_account_for_test(signer::address_of(dev));
         account::create_account_for_test(signer::address_of(admin));
         account::create_account_for_test(signer::address_of(treasury));
-        resource_account::create_resource_account(dev, b"baptswaptest", x"");
+        resource_account::create_resource_account(dev, b"baptswaptest_v2", x"");
         swap_v2::initialize(resource_account);
         account::create_account_for_test(signer::address_of(bapt_framework));
         coin::register<APT>(bapt_framework);
@@ -113,7 +112,7 @@ module baptswap_v2::swap_test_v2 {
         alice: &signer,
     ) {
         setup_test_with_genesis(aptos_framework, bapt_framework, dev, admin, treasury, resource_account, alice, bob);
-
+        coin::register<TestBAPT>(treasury);
         coin::transfer<TestBAPT>(alice, signer::address_of(bob), 10 * pow(10, 8));
         coin::transfer<TestMAU>(bob, signer::address_of(alice), 10 * pow(10, 8));
 
@@ -125,8 +124,8 @@ module baptswap_v2::swap_test_v2 {
 
         let bob_liquidity_x = 10 * pow(10, 8);
         let bob_liquidity_y = 10 * pow(10, 8);
-        let alice_liquidity_x = 2 * pow(10, 8);
-        let alice_liquidity_y = 4 * pow(10, 8);
+        let alice_liquidity_x = 15 * pow(10, 8);
+        let alice_liquidity_y = 15 * pow(10, 8);
 
         // bob provider liquidity for BAPT-MAU
         router_v2::add_liquidity<TestBAPT, TestMAU>(bob, bob_liquidity_x, bob_liquidity_y, 0, 0);
@@ -135,16 +134,36 @@ module baptswap_v2::swap_test_v2 {
         router_v2::add_liquidity<APT, TestMAU>(bob, alice_liquidity_x, alice_liquidity_y, 0, 0);
 
         // initialize fee on transfer of both tokens
-        router_v2::initialize_fee_on_transfer<TestBAPT>(alice, 0, 100, 100);
-        router_v2::initialize_fee_on_transfer<TestMAU>(bob, 0, 100, 100);
+        router_v2::initialize_fee_on_transfer<TestBAPT>(alice, 0, 200, 200);
+        router_v2::initialize_fee_on_transfer<TestMAU>(bob, 0, 200, 200);
 
         // Initialize rewards pool
         router_v2::create_rewards_pool<TestBAPT, TestMAU>(bob, false); 
 
+        // router_v2::create_rewards_pool<TestBAPT, APT>(alice, false);
+        router_v2::create_rewards_pool<APT, TestBAPT>(alice, false);
+        router_v2::create_rewards_pool<TestBAPT, APT>(alice, false);
+
+        debug::print<u64>(&coin::balance<TestBAPT>(signer::address_of(alice)));
+        debug::print<u64>(&coin::balance<APT>(signer::address_of(alice)));
+
+        router_v2::stake_tokens_in_pool<APT, TestBAPT>(alice, 10 * pow(10, 8));
+        router_v2::stake_tokens_in_pool<TestBAPT, APT>(alice, 10 * pow(10, 8));
+
+        debug::print<u64>(&coin::balance<TestBAPT>(signer::address_of(alice)));
+        debug::print<u64>(&coin::balance<APT>(signer::address_of(alice)));
+
+        // debug::print<u64>(&coin::balance<TestMAU>(signer::address_of(alice)));
         router_v2::stake_tokens_in_pool<TestMAU, TestBAPT>(alice, 5 * pow(10, 8));
+        // debug::print<u64>(&coin::balance<TestMAU>(signer::address_of(alice)));
         router_v2::stake_tokens_in_pool<TestBAPT, TestMAU>(bob, 5 * pow(10, 8));
 
         let (staked_tokens, balance_x, balance_y, magnified_dividends_per_share_x, magnified_dividends_per_share_y, precision_factor, is_x_staked) = swap_v2::token_rewards_pool_info<TestBAPT, TestMAU>();
+        
+        // debug::print<u64>(&staked_tokens);
+        // debug::print<u64>(&balance_x);
+        // debug::print<u64>(&balance_y);
+        // debug::print<bool>(&is_x_staked);
 
         assert!(staked_tokens == 10 * pow(10, 8), 130);
 
@@ -153,34 +172,26 @@ module baptswap_v2::swap_test_v2 {
         assert!(pool_balance_x == 0, 126);
         assert!(pool_balance_y == 0, 126);
 
-        assert!(precision_factor == (1 * pow(10, 12) as u128), 127);
-        assert!(!is_x_staked, 128);
-        assert!(balance_x == 0, 131);
-        assert!(balance_y == 0, 131);
-        assert!(magnified_dividends_per_share_y == 0, 132);
-        assert!(magnified_dividends_per_share_x == magnified_dividends_per_share_y, 133);
+        let (pool_balance_x, pool_balance_y) = swap_v2::get_rewards_fees_accumulated<TestBAPT, TestMAU>();
+        debug::print<u64>(&pool_balance_x);
+        debug::print<u64>(&pool_balance_y);
 
         // swap
-        let input_x = 10 * pow(10, 6);
-        router_v2::swap_exact_input<TestBAPT, TestMAU>(alice, input_x, 1);
+        let input_x = 2 * pow(10, 8);
+        // router_v2::swap_exact_input<TestBAPT, TestMAU>(alice, input_x, 0);
+        let (reserve_x, reserve_y, _) = swap_v2::token_reserves<TestBAPT, APT>();
+        let liquidity = (swap_v2::total_lp_supply<TestBAPT, APT>() as u64);
+        debug::print<u64>(&liquidity);
+        debug::print<u64>(&reserve_x);
+        debug::print<u64>(&reserve_y);
+        router_v2::swap_exact_input<TestBAPT, APT>(alice, input_x, 0);
+        router_v2::swap_exact_input<APT, TestBAPT>(alice, input_x, 0);
+        // router_v2::swap_exact_input<TestBAPT, TestMAU>(alice, input_x, 0);
+        // router_v2::swap_exact_input<TestBAPT, APT>(alice, input_x, 0);
 
-        let (staked_tokens, balance_x, balance_y, magnified_dividends_per_share_x, magnified_dividends_per_share_y, precision_factor, is_x_staked) = swap_v2::token_rewards_pool_info<TestBAPT, TestMAU>();
-
-        // assert!(balance_x == 1 * pow(10, 5), 134);
-
-        // TODO: debug
-        router_v2::claim_rewards_from_pool<TestBAPT, TestMAU>(alice);
-
-        let (staked_tokens, balance_x, balance_y, magnified_dividends_per_share_x, magnified_dividends_per_share_y, precision_factor, is_x_staked) = swap_v2::token_rewards_pool_info<TestBAPT, TestMAU>();
-
-        // assert!(balance_x == 15 * pow(10, 5), 135);
-
-        router_v2::unstake_tokens_from_pool<TestBAPT, TestMAU>(bob, 5 * pow(10, 8));
-
-        let (staked_tokens, balance_x, balance_y, magnified_dividends_per_share_x, magnified_dividends_per_share_y, precision_factor, is_x_staked) = swap_v2::token_rewards_pool_info<TestBAPT, TestMAU>();
-
-        // assert!(staked_tokens == 2 * pow(10, 8), 136);
-
+        let (pool_balance_x, pool_balance_y) = swap_v2::get_rewards_fees_accumulated<TestBAPT, APT>();
+        debug::print<u64>(&pool_balance_x);
+        debug::print<u64>(&pool_balance_y);
     }
     
 

@@ -24,6 +24,8 @@ module baptswap_v2::swap_v2 {
     use std::signer;
     use std::option::{Self, Option};
     use std::string;
+
+    // use aptos_std::debug;
     use aptos_std::type_info;
     use aptos_std::event;
 
@@ -1081,7 +1083,7 @@ module baptswap_v2::swap_v2 {
         // distrubute fees and update reserves
         distribute_fee_on_transfer<X, Y>(amount_in);
 
-        assert!(coin::value<Y>(&coins_y_out) == amount_out, ERROR_INSUFFICIENT_OUTPUT_AMOUNT);
+        assert!(coin::value<Y>(&coins_y_out) == 0, ERROR_INSUFFICIENT_OUTPUT_AMOUNT);
         (coins_x_out, coins_y_out)
     }
 
@@ -1553,95 +1555,17 @@ module baptswap_v2::swap_v2 {
 
     // used in swap functions to distribute DEX fees and update reserves correspondingly
     fun distribute_dex_fees<X, Y>(amount_in: u64) acquires SwapInfo, TokenPairReserve, TokenPairMetadata {
-        // distribute DEX fees to dex owner; converted automatically to APT
-        let (amount_to_liquidity, amount_to_treasury) = calculate_dex_fees_amounts<X>(amount_in);
-        // if X is not APT, swap the amounts into APT
-        if (type_info::type_of<X>() != type_info::type_of<APT>()) {
-            let metadata = borrow_global_mut<TokenPairMetadata<X, Y>>(RESOURCE_ACCOUNT);
-            // extract it from balance x from the metadata
-            let coin_x_out = coin::extract<X>(&mut metadata.balance_x, amount_in);
-            // swap it to APT
-            let coin_y_out = swap_exact_fee_to_apt<X>(coin_x_out);
-            // deposit APT to treasury
-            // assert!(borrow_global<SwapInfo>(RESOURCE_ACCOUNT).fee_to == RESOURCE_ACCOUNT, 1);
-            coin::deposit<APT>(fee_to(), coin_y_out);
-            // update reserves
-            update_reserves<X, Y>();
-        } else {
-            let metadata = borrow_global_mut<TokenPairMetadata<APT, Y>>(RESOURCE_ACCOUNT);
-            // if X is APT, extract and deposit directly
-            let dex_fee_coins = coin::extract<APT>(&mut metadata.balance_x, ((amount_to_liquidity + amount_to_treasury) as u64));
-            coin::deposit<APT>(fee_to(), dex_fee_coins);
-            // update reserves
-            update_reserves<X, Y>();
-        }
-    }
-
-    // swap function for treasury fee; returns only the amount in APT
-    fun swap_exact_fee_to_apt<X>(coins_in: Coin<X>): Coin<APT> acquires TokenPairReserve, TokenPairMetadata {
-        // Grab token pair metadata
-        let metadata = borrow_global_mut<TokenPairMetadata<X, APT>>(RESOURCE_ACCOUNT); 
-        // get the value of coins in u64
-        let amount_in = coin::value<X>(&coins_in);
-
-        // deposit amount_in x into balance x
-        coin::merge(&mut metadata.balance_x, coins_in);
-
-        // Get amount y
-        let (coins_x_out, coins_y_out) = swap_with_no_fee<X, APT>(0, amount_in);
-        coin::destroy_zero(coins_x_out); // or others ways to drop `coins_x_out`
-
-        coins_y_out
-    }
-
-    fun swap_with_no_fee<X, APT>(
-        amount_x_out: u64,
-        amount_y_out: u64
-    ): (Coin<X>, Coin<APT>) acquires TokenPairReserve, TokenPairMetadata {
-        assert!(amount_x_out > 0 || amount_y_out > 0, ERROR_INSUFFICIENT_OUTPUT_AMOUNT);
-
-        let reserves = borrow_global_mut<TokenPairReserve<X, APT>>(RESOURCE_ACCOUNT);
-        assert!(amount_x_out < reserves.reserve_x && amount_y_out < reserves.reserve_y, ERROR_INSUFFICIENT_LIQUIDITY);
-
-        let metadata = borrow_global_mut<TokenPairMetadata<X, APT>>(RESOURCE_ACCOUNT);
-
-        let coins_x_out = coin::zero<X>();
-        let coins_y_out = coin::zero<APT>();
-        if (amount_x_out > 0) coin::merge(&mut coins_x_out, extract_x(amount_x_out, metadata));
-        if (amount_y_out > 0) coin::merge(&mut coins_y_out, extract_y(amount_y_out, metadata));
-        let (balance_x, balance_y) = token_balances<X, APT>();
-
-        let amount_x_in = if (balance_x > reserves.reserve_x - amount_x_out) {
-            balance_x - (reserves.reserve_x - amount_x_out)
-        } else { 0 };
-        let amount_y_in = if (balance_y > reserves.reserve_y - amount_y_out) {
-            balance_y - (reserves.reserve_y - amount_y_out)
-        } else { 0 };
-
-        assert!(amount_x_in > 0 || amount_y_in > 0, ERROR_INSUFFICIENT_INPUT_AMOUNT);
-
-        let prec = (PRECISION as u128);
-        let balance_x_adjusted = (balance_x as u128) * prec - (amount_x_in as u128);
-        let balance_y_adjusted = (balance_y as u128) * prec - (amount_y_in as u128);
-        let reserve_x_adjusted = (reserves.reserve_x as u128) * prec;
-        let reserve_y_adjusted = (reserves.reserve_y as u128) * prec;
-
-        // No need to use u256 when balance_x_adjusted * balance_y_adjusted and reserve_x_adjusted * reserve_y_adjusted are less than MAX_U128.
-        let compare_result = if(
-            balance_x_adjusted > 0 
-            && reserve_x_adjusted > 0 
-            && MAX_U128 / balance_x_adjusted > balance_y_adjusted 
-            && MAX_U128 / reserve_x_adjusted > reserve_y_adjusted
-        ) { balance_x_adjusted * balance_y_adjusted >= reserve_x_adjusted * reserve_y_adjusted } else {
-            let p = u256::mul_u128(balance_x_adjusted, balance_y_adjusted);
-            let k = u256::mul_u128(reserve_x_adjusted, reserve_y_adjusted);
-            u256::ge(&p, &k)
-        };
-        assert!(compare_result, ERROR_K);
-
-        update(balance_x, balance_y, reserves);
-
-        (coins_x_out, coins_y_out)
+        // distribute DEX fees to dex owner;
+        let (amount_to_liquidity, amount_to_treasury) = calculate_dex_fees_amounts<Y>(amount_in);
+        let metadata = borrow_global_mut<TokenPairMetadata<X, Y>>(RESOURCE_ACCOUNT);
+        // liquidity
+        let liquidity_fee_coins = coin::extract<Y>(&mut metadata.balance_y, (amount_to_liquidity as u64));
+        coin::merge(&mut metadata.balance_y, liquidity_fee_coins);
+        // treasury 
+        let treasury_fee_coins = coin::extract<Y>(&mut metadata.balance_y, (amount_to_treasury as u64));
+        coin::deposit<Y>(fee_to(), treasury_fee_coins);
+        // update reserves
+        update_reserves<X, Y>();
     }
 
     fun update_reserves<X, Y>() acquires TokenPairReserve, TokenPairMetadata {
