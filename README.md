@@ -24,8 +24,8 @@
 | `SV2-11` |  ⏳  |  | last thing to fix; we need to know which constants are used and which are not |
 | `SV2-12` |  ✅  | [80c4e0c](https://github.com/BAPTSWAP/V2-core/commit/80c4e0cb32a03cc29360060b263320ce1189e67f) |
 | `SV2-13` |  ✅  | [78ab62f](https://github.com/BAPTSWAP/V2-core/commit/78ab62ffa4eed8454cc62b21dcdc734738b9f242) |
-| SV2-14 |  ✅  | []() |
-| SV2-15 |  ✅  | [4a5ad17](https://github.com/BAPTSWAP/V2-core/commit/4a5ad17da827ca665cc4c0719a9efed72cf833a5) |
+| `SV2-14` |  ✅  | []() |
+| `SV2-15` |  ✅  | [4a5ad17](https://github.com/BAPTSWAP/V2-core/commit/4a5ad17da827ca665cc4c0719a9efed72cf833a5) |
 
 ## TODOs
 
