@@ -202,7 +202,108 @@ module baptswap_v2::swap_v2 {
         move_to(&resource_signer, SwapInfo { pair_created: account::new_event_handle<PairCreatedEvent>(&resource_signer) });
     }
 
-    
+    // ---------------
+    // Entry functions
+    // ---------------
+
+    // TODO: should be in router?
+    // toggle all individual token fees in a token pair; given CoinType, and a Token Pair
+    public entry fun toggle_all_fees<CoinType, X, Y>(
+        sender: &signer,
+        activate: bool,
+    ) acquires TokenPairMetadata {
+        // update new fees based on "activate" variable
+        toggle_liquidity_fee<CoinType, X, Y>(sender, activate);
+        toggle_team_fee<CoinType, X, Y>(sender, activate);
+        toggle_rewards_fee<CoinType, X, Y>(sender, activate);
+
+        // TODO: events
+    }
+
+    // Toggle liquidity fee
+    public entry fun toggle_liquidity_fee<CoinType, X, Y>(
+        sender: &signer,  
+        activate: bool
+    ) acquires TokenPairMetadata {
+        // assert cointype is either X or Y
+        assert!(type_info::type_of<CoinType>() == type_info::type_of<X>() || type_info::type_of<CoinType>() == type_info::type_of<Y>(), 1);
+        // assert sender is token owner
+        assert!(deployer::is_coin_owner<CoinType>(sender), errors::not_owner());
+        // TODO: assert FeeOnTransferInfo<CoinType> is registered in the pair
+
+        let metadata = borrow_global_mut<TokenPairMetadata<X, Y>>(constants::get_resource_account_address());
+
+        if (activate) {
+            metadata.liquidity_fee = metadata.liquidity_fee + fee_on_transfer::get_liquidity_fee<CoinType>();
+        } else {
+            metadata.liquidity_fee = metadata.liquidity_fee - fee_on_transfer::get_liquidity_fee<CoinType>();
+        }
+
+    }
+
+    // toggle team fee
+    public entry fun toggle_team_fee<CoinType, X, Y>(
+        sender: &signer, 
+        activate: bool,
+    ) acquires TokenPairMetadata {
+        // assert sender is token owner
+        assert!(deployer::is_coin_owner<CoinType>(sender), errors::not_owner());
+        // TODO: assert FeeOnTransferInfo<CoinType> is registered in the pair
+
+        let metadata = borrow_global_mut<TokenPairMetadata<X, Y>>(constants::get_resource_account_address());
+        let fee_on_transfer = fee_on_transfer::get_info<CoinType>();
+        // if cointype = x
+        if (type_info::type_of<CoinType>() == type_info::type_of<X>()) {
+            // if activate = true
+            if (activate == true) {
+                metadata.team_fee = metadata.team_fee + fee_on_transfer::get_team_fee<CoinType>();
+            // if activate = false
+            } else {
+                metadata.team_fee = metadata.team_fee - fee_on_transfer::get_team_fee<CoinType>();
+            }
+        // if cointype = y
+        } else if (type_info::type_of<CoinType>() == type_info::type_of<Y>()) {
+            // if activate = true
+            if (activate == true) {
+                metadata.team_fee = metadata.team_fee + fee_on_transfer::get_team_fee<CoinType>();
+            // if activate = false
+            } else {
+                metadata.team_fee = metadata.team_fee - fee_on_transfer::get_team_fee<CoinType>();
+            }
+        } else { assert!(false, 1); }
+    }
+
+    // toggle rewards fee for a token in a token pair
+    public entry fun toggle_rewards_fee<CoinType, X, Y>(
+        sender: &signer,
+        activate: bool,
+    ) acquires TokenPairMetadata {
+        // assert sender is token owner
+        assert!(deployer::is_coin_owner<CoinType>(sender), errors::not_owner());
+        // TODO: assert FeeOnTransferInfo<CoinType> is registered in the pair
+
+        let metadata = borrow_global_mut<TokenPairMetadata<X, Y>>(constants::get_resource_account_address());
+        let fee_on_transfer = fee_on_transfer::get_info<CoinType>();
+        // if cointype = x
+        if (type_info::type_of<CoinType>() == type_info::type_of<X>()) {
+            // if activate = true
+            if (activate == true) {
+                metadata.rewards_fee = metadata.rewards_fee + fee_on_transfer::get_rewards_fee<CoinType>();
+            // if activate = false
+            } else {
+                metadata.rewards_fee = metadata.rewards_fee - fee_on_transfer::get_rewards_fee<CoinType>();
+            }
+        // if cointype = y
+        } else if (type_info::type_of<CoinType>() == type_info::type_of<Y>()) {
+            // if activate = true
+            if (activate == true) {
+                metadata.rewards_fee = metadata.rewards_fee + fee_on_transfer::get_rewards_fee<CoinType>();
+            // if activate = false
+            } else {
+                metadata.rewards_fee = metadata.rewards_fee - fee_on_transfer::get_rewards_fee<CoinType>();
+            }
+        } else { assert!(false, 1); }
+    }
 
     // ------------------
     // Internal Functions
@@ -373,16 +474,16 @@ module baptswap_v2::swap_v2 {
         
         // if Cointype = X, add fee_on_transfer to pair_metadata.fee_on_transfer_x
         if (type_info::type_of<CoinType>() == type_info::type_of<X>()) {
-            let fee_on_transfer = fee_on_transfer::get_fee_on_transfer_info<X>();
+            let fee_on_transfer = fee_on_transfer::get_info<X>();
             option::fill<FeeOnTransferInfo<X>>(&mut metadata.fee_on_transfer_x, fee_on_transfer);
-            fee_on_transfer::toggle_all_fee<CoinType, X, Y>(sender, true);
+            toggle_all_fees<CoinType, X, Y>(sender, true);
             // register Y; needed to receive team fees
             utils::check_or_register_coin_store<Y>(sender);
         // if Cointype = Y, add fee_on_transfer to pair_metadata.fee_on_transfer_y
         } else {
-            let fee_on_transfer = fee_on_transfer::get_fee_on_transfer_info<Y>();
+            let fee_on_transfer = fee_on_transfer::get_info<Y>();
             option::fill<FeeOnTransferInfo<Y>>(&mut metadata.fee_on_transfer_y, fee_on_transfer);
-            fee_on_transfer::toggle_all_fee<CoinType, X, Y>(sender, true);
+            toggle_all_fees<CoinType, X, Y>(sender, true);
             // register X; needed to receive team fees
             utils::check_or_register_coin_store<X>(sender);
         }
@@ -747,8 +848,8 @@ module baptswap_v2::swap_v2 {
             coin::merge(&mut metadata.balance_x, liquidity_coins);
             // rewards fees must go to rewards pool
             if (metadata.rewards_fee > 0) {
-                // TODO: distribute_rewards should get Coin<X> and Coin<Y> instead of u128
-                stake::distribute_rewards<X, Y>(amount_to_rewards, 0);
+                let rewards_coins = coin::extract<X>(&mut metadata.balance_x, (amount_to_rewards as u64));
+                stake::distribute_rewards<X, Y>(rewards_coins, coin::zero<Y>());
             };
             coin::merge(&mut metadata.team_balance_x, team_coins);
             // update reserves
@@ -768,7 +869,8 @@ module baptswap_v2::swap_v2 {
             coin::merge(&mut metadata.balance_y, liquidity_coins);
             // rewards fees must go to rewards pool
             if (metadata.rewards_fee > 0) {
-                stake::distribute_rewards<X, Y>(0, amount_to_rewards);
+                let rewards_coins = coin::extract<Y>(&mut metadata.balance_y, (amount_to_rewards as u64));
+                stake::distribute_rewards<X, Y>(coin::zero<X>(), rewards_coins);
             };
             coin::merge(&mut metadata.team_balance_y, team_coins);
             // update reserves
@@ -791,7 +893,9 @@ module baptswap_v2::swap_v2 {
             coin::merge(&mut metadata.balance_y, liquidity_coins_y);
             // rewards fees must go to rewards pool
             if (metadata.rewards_fee > 0) {
-                stake::distribute_rewards<X, Y>(amount_to_rewards_x, amount_to_rewards_y);
+                let rewards_coins_x = coin::extract<X>(&mut metadata.balance_x, (amount_to_rewards_x as u64));
+                let rewards_coins_y = coin::extract<Y>(&mut metadata.balance_y, (amount_to_rewards_y as u64));
+                stake::distribute_rewards<X, Y>(rewards_coins_x, rewards_coins_y);
             };
             coin::merge(&mut metadata.team_balance_x, team_coins_x);
             coin::merge(&mut metadata.team_balance_y, team_coins_y);

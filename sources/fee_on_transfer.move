@@ -75,109 +75,6 @@ module baptswap_v2::fee_on_transfer {
         );
     }
 
-    // --------------------
-    // Initialize functions
-    // --------------------
-    
-    // toggle all individual token fees in a token pair; given CoinType, and a Token Pair
-    public entry fun toggle_all_fee<CoinType, X, Y>(
-        sender: &signer,
-        activate: bool,
-    ) acquires FeeOnTransferInfo {
-        // update new fees based on "activate" variable
-        toggle_liquidity_fee<CoinType, X, Y>(sender, activate);
-        toggle_team_fee<CoinType, X, Y>(sender, activate);
-        toggle_rewards_fee<CoinType, X, Y>(sender, activate);
-
-        // TODO: events
-    }
-
-    // Toggle liquidity fee
-    public entry fun toggle_liquidity_fee<CoinType, X, Y>(
-        sender: &signer,  
-        activate: bool
-    ) acquires FeeOnTransferInfo {
-        // assert cointype is either X or Y
-        assert!(type_info::type_of<CoinType>() == type_info::type_of<X>() || type_info::type_of<CoinType>() == type_info::type_of<Y>(), 1);
-        // assert sender is token owner
-        assert!(deployer::is_coin_owner<CoinType>(sender), errors::not_owner());
-        // TODO: assert FeeOnTransferInfo<CoinType> is registered in the pair
-
-        let metadata = borrow_global_mut<TokenPairMetadata<X, Y>>(constants::get_resource_account_address());
-        let fee_on_transfer = borrow_global<FeeOnTransferInfo<CoinType>>(signer::address_of(sender));
-
-        if (activate) {
-            metadata.liquidity_fee = metadata.liquidity_fee + fee_on_transfer.liquidity_fee_modifier;
-        } else {
-            metadata.liquidity_fee = metadata.liquidity_fee - fee_on_transfer.liquidity_fee_modifier;
-        }
-
-    }
-
-    // toggle team fee
-    public entry fun toggle_team_fee<CoinType, X, Y>(
-        sender: &signer, 
-        activate: bool,
-    ) acquires FeeOnTransferInfo {
-        // assert sender is token owner
-        assert!(deployer::is_coin_owner<CoinType>(sender), errors::not_owner());
-        // TODO: assert FeeOnTransferInfo<CoinType> is registered in the pair
-
-        let metadata = borrow_global_mut<TokenPairMetadata<X, Y>>(constants::get_resource_account_address());
-        let fee_on_transfer = borrow_global<FeeOnTransferInfo<CoinType>>(signer::address_of(sender));
-        // if cointype = x
-        if (type_info::type_of<CoinType>() == type_info::type_of<X>()) {
-            // if activate = true
-            if (activate == true) {
-                metadata.team_fee = metadata.team_fee + fee_on_transfer.team_fee_modifier;
-            // if activate = false
-            } else {
-                metadata.team_fee = metadata.team_fee - fee_on_transfer.team_fee_modifier;
-            }
-        // if cointype = y
-        } else if (type_info::type_of<CoinType>() == type_info::type_of<Y>()) {
-            // if activate = true
-            if (activate == true) {
-                metadata.team_fee = metadata.team_fee + fee_on_transfer.team_fee_modifier;
-            // if activate = false
-            } else {
-                metadata.team_fee = metadata.team_fee - fee_on_transfer.team_fee_modifier;
-            }
-        } else { assert!(false, 1); }
-    }
-
-    // toggle rewards fee for a token in a token pair
-    public entry fun toggle_rewards_fee<CoinType, X, Y>(
-        sender: &signer,
-        activate: bool,
-    ) acquires FeeOnTransferInfo {
-        // assert sender is token owner
-        assert!(deployer::is_coin_owner<CoinType>(sender), errors::not_owner());
-        // TODO: assert FeeOnTransferInfo<CoinType> is registered in the pair
-
-        let metadata = borrow_global_mut<TokenPairMetadata<X, Y>>(constants::get_resource_account_address());
-        let fee_on_transfer = borrow_global<FeeOnTransferInfo<CoinType>>(signer::address_of(sender));
-        // if cointype = x
-        if (type_info::type_of<CoinType>() == type_info::type_of<X>()) {
-            // if activate = true
-            if (activate == true) {
-                metadata.rewards_fee = metadata.rewards_fee + fee_on_transfer.rewards_fee_modifier;
-            // if activate = false
-            } else {
-                metadata.rewards_fee = metadata.rewards_fee - fee_on_transfer.rewards_fee_modifier;
-            }
-        // if cointype = y
-        } else if (type_info::type_of<CoinType>() == type_info::type_of<Y>()) {
-            // if activate = true
-            if (activate == true) {
-                metadata.rewards_fee = metadata.rewards_fee + fee_on_transfer.rewards_fee_modifier;
-            // if activate = false
-            } else {
-                metadata.rewards_fee = metadata.rewards_fee - fee_on_transfer.rewards_fee_modifier;
-            }
-        } else { assert!(false, 1); }
-    }
-
     // ------------------
     // Internal functions
     // ------------------
@@ -204,7 +101,7 @@ module baptswap_v2::fee_on_transfer {
     }
 
     // update fee_on_transfer rewards fee
-    public entry fun set_rewards_fee<CoinType>(sender: &signer, new_fee: u128) {
+    public entry fun set_rewards_fee<CoinType>(sender: &signer, new_fee: u128) acquires FeeOnTransferInfo {
         let fee_on_transfer = borrow_global_mut<FeeOnTransferInfo<CoinType>>(constants::get_resource_account_address());
         let fee_on_transfer_rewards_fee = fee_on_transfer.rewards_fee_modifier;
         // assert sender is token owner of CoinType
@@ -221,7 +118,7 @@ module baptswap_v2::fee_on_transfer {
     }
 
     // update fee_on_transfer team fee
-    public entry fun set_team_fee<CoinType>(sender: &signer, new_fee: u128) {
+    public entry fun set_team_fee<CoinType>(sender: &signer, new_fee: u128) acquires FeeOnTransferInfo {
         let fee_on_transfer = borrow_global_mut<FeeOnTransferInfo<CoinType>>(constants::get_resource_account_address());
         let fee_on_transfer_team_fee = fee_on_transfer.team_fee_modifier;
         // assert sender is token owner of CoinType
@@ -247,8 +144,8 @@ module baptswap_v2::fee_on_transfer {
     }
 
     // returns a FeeOnTransferInfo<CoinType>
-    public(friend) inline fun get_fee_on_transfer_info<CoinType>(): FeeOnTransferInfo<CoinType> {
-        let fee_on_transfer_token_info =  borrow_global<FeeOnTransferInfo<CoinType>>(constants::get_resource_account_address());
+    public(friend) fun get_info<CoinType>(): FeeOnTransferInfo<CoinType> acquires FeeOnTransferInfo {
+        let fee_on_transfer_token_info = borrow_global<FeeOnTransferInfo<CoinType>>(constants::get_resource_account_address());
         
         FeeOnTransferInfo<CoinType> {
             owner: fee_on_transfer_token_info.owner,
@@ -263,7 +160,7 @@ module baptswap_v2::fee_on_transfer {
     // --------------
 
     #[view]
-    public fun get_liquidity_fee<CoinType>(): u128 {
+    public fun get_liquidity_fee<CoinType>(): u128  acquires FeeOnTransferInfo {
         let fee_on_transfer = borrow_global<FeeOnTransferInfo<CoinType>>(constants::get_resource_account_address());
         fee_on_transfer.liquidity_fee_modifier
     }

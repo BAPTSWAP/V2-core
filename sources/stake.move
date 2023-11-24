@@ -453,14 +453,16 @@ module baptswap_v2::stake {
         (pool_balance_x, pool_balance_y)
     }
 
-    public(friend) fun distribute_rewards<X, Y>(rewards_x: u128, rewards_y: u128) acquires TokenPairRewardsPool {
+    public(friend) fun distribute_rewards<X, Y>(
+        rewards_x: coin::Coin<X>, 
+        rewards_y: coin::Coin<Y>
+    ) acquires TokenPairRewardsPool {
         assert!(is_pool_created<X, Y>(), errors::pool_not_created());
-        let pool = borrow_global_mut<TokenPairRewardsPool<X, Y>>(constants::get_resource_account_address());
-        let rewards_coins_x = coin::extract<X>(&mut metadata.balance_x, (rewards_x as u64));
-        let rewards_coins_y = coin::extract<Y>(&mut metadata.balance_y, (rewards_y as u64));
         // Update pool
-        update_pool<X, Y>(reward_x, reward_y);
-        coin::merge(&mut rewards_pool.balance_x, rewards_coins);
-        coin::merge(&mut rewards_pool.balance_y, rewards_coins);
+        update_pool<X, Y>(coin::value<X>(&rewards_x), coin::value<Y>(&rewards_y));
+
+        let rewards_pool = borrow_global_mut<TokenPairRewardsPool<X, Y>>(constants::get_resource_account_address());
+        coin::merge(&mut rewards_pool.balance_x, rewards_x);
+        coin::merge(&mut rewards_pool.balance_y, rewards_y);
     }
 }
