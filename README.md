@@ -34,4 +34,5 @@
 - [ ] Work on a proper error handling and messages
 - [ ] Update events handling
 - [ ] Unit testing
+- [ ] refactor: baptswap -> baptswap legacy && baptswap_v2 -> baptswap
 
