@@ -7,7 +7,6 @@ module baptswap_v2::constants {
     friend baptswap_v2::stake;
     friend baptswap_v2::fee_on_transfer;
 
-    const DEFAULT_ADMIN: address = @default_admin;
     const RESOURCE_ACCOUNT: address = @baptswap_v2;
     const DEV: address = @dev_2;
 
@@ -19,9 +18,6 @@ module baptswap_v2::constants {
     const MAX_U128: u128 = 340282366920938463463374607431768211455;
     // Max individual token fee: 15%; (1500 / (100*100))
     const FEE_ON_TRANSFER_THRESHOLD_NUMERATOR: u128 = 1500;
-
-    #[view]
-    public fun get_admin_address(): address { DEFAULT_ADMIN }
 
     #[view]
     public fun get_resource_account_address(): address { RESOURCE_ACCOUNT }

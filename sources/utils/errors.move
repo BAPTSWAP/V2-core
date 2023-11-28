@@ -7,10 +7,11 @@ module baptswap_v2::errors {
     use std::error;
 
     friend baptswap_v2::admin;
+    friend baptswap_v2::fee_on_transfer;
+    friend baptswap_v2::ownership_transfers;
     friend baptswap_v2::router_v2;
     friend baptswap_v2::swap_v2;
     friend baptswap_v2::stake;
-    friend baptswap_v2::fee_on_transfer;
 
     const ERROR_ONLY_ADMIN: u64 = 0;
     const ERROR_ALREADY_INITIALIZED: u64 = 1;
@@ -55,6 +56,7 @@ module baptswap_v2::errors {
     const MAX_COIN_NAME_LENGTH: u64 = 37;
 
     const COINTYPE_DOES_NOT_MATCH_X_OR_Y: u64 = 38;
+    const ERROR_SAME_ADDRESS: u64 = 39;
 
     public(friend) fun only_admin(): u64 { error::permission_denied(ERROR_ONLY_ADMIN) }
     public(friend) fun already_initialized(): u64 { error::invalid_argument(ERROR_ALREADY_INITIALIZED) }
@@ -92,4 +94,5 @@ module baptswap_v2::errors {
     public(friend) fun pool_exists(): u64 { error::already_exists(ERROR_POOL_EXISTS) }
     public(friend) fun max_coin_name_length(): u64 { error::out_of_range(MAX_COIN_NAME_LENGTH) }
     public(friend) fun coin_type_does_not_match_x_or_y(): u64 { error::internal(COINTYPE_DOES_NOT_MATCH_X_OR_Y) }
+    public(friend) fun same_address(): u64 { error::invalid_argument(ERROR_SAME_ADDRESS) }
 }

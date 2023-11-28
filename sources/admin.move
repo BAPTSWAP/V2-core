@@ -27,6 +27,7 @@ module baptswap_v2::admin {
     use baptswap_v2::constants;
 
     friend baptswap_v2::fee_on_transfer;
+    friend baptswap_v2::ownership_transfers;
     friend baptswap_v2::stake;
     friend baptswap_v2::swap_v2;
 
@@ -50,6 +51,7 @@ module baptswap_v2::admin {
     fun init_module(sender: &signer) {
         let signer_cap = resource_account::retrieve_resource_account_cap(sender, @dev_2);
         let resource_signer = account::create_signer_with_capability(&signer_cap);
+        // initialize swap info
         move_to(&resource_signer, AdminInfo {
             signer_cap,
             treasury_address: @baptswap_v2, // TODO: tbs
@@ -63,9 +65,19 @@ module baptswap_v2::admin {
     // Mutators
     // --------
 
-    // TODO: set treasury_address; follow the two step ownership transfer pattern
+    // Set treasury_address; follow the two step ownership transfer pattern
+    public(friend) fun set_treasury_address(new_treasury_address: address) acquires AdminInfo {
+        let swap_info = borrow_global_mut<AdminInfo>(@baptswap_v2);
+        // update the treasury address
+        swap_info.treasury_address = new_treasury_address;
+    }
 
-    // TODO: set admin; follow the two step ownership transfer pattern
+    // Set admin; follow the two step ownership transfer pattern
+    public(friend) fun set_admin(new_admin: address) acquires AdminInfo {
+        let swap_info = borrow_global_mut<AdminInfo>(@baptswap_v2);
+        // update the admin
+        swap_info.admin = new_admin;
+    }
 
     // Set dex liquidity fee
     public entry fun set_dex_liquidity_fee(sender: &signer, new_fee: u128) acquires AdminInfo {
