@@ -13,7 +13,7 @@
 | `RV2-3` |  ✅  |  | |
 | `SV2-1` |  ✅  | [d85d0f4](https://github.com/BAPTSWAP/V2-core/commit/d85d0f437f0d6bf92e63f805b91cb314547419ff) | removed: as we're sending fee in the swaped cointype |
 | `SV2-2` |  ✅  | [d85d0f4](https://github.com/BAPTSWAP/V2-core/commit/d85d0f437f0d6bf92e63f805b91cb314547419ff) |
-| `Sv2-3` |  ❌  |  |
+| `Sv2-3` |  ✅  | [4fc5993](https://github.com/BAPTSWAP/V2-core/commit/4fc59932a2839321b053871053f9715602e0d4b8) |
 | `SV2-4` |  ❌  |  |
 | `SV2-5` |  ✅  | [d85d0f4](https://github.com/BAPTSWAP/V2-core/commit/d85d0f437f0d6bf92e63f805b91cb314547419ff) |
 | `SV2-6` |  ✅  | [9e9d83d](https://github.com/BAPTSWAP/V2-core/commit/9e9d83dd8bdd0989f1a44b1da18b2e0b9b461771) |
@@ -26,12 +26,12 @@
 | `SV2-13` |  ✅  | [78ab62f](https://github.com/BAPTSWAP/V2-core/commit/78ab62ffa4eed8454cc62b21dcdc734738b9f242) | |
 | `SV2-14` |  ✅  | [07ad85](https://github.com/BAPTSWAP/V2-core/commit/07ad85eb5436c62c3f90cf36753c637b49834fec) | |
 | `SV2-15` |  ✅  | [4a5ad17](https://github.com/BAPTSWAP/V2-core/commit/4a5ad17da827ca665cc4c0719a9efed72cf833a5) | |
+
 ## TODOs
 
 - [ ] Finish fixing the issues
-- [ ] Work on separate modules for rewards pool and fee on transfer
-- [ ] Work on a proper error handling and messages
-- [ ] Update events handling
+- [x] Work on separate modules for rewards pool and fee on transfer
+- [x] Work on a proper error handling and messages
 - [ ] Unit testing
 - [ ] refactor: baptswap -> baptswap legacy && baptswap_v2 -> baptswap
 
