@@ -8,7 +8,6 @@ module baptswap_v2::errors {
 
     friend baptswap_v2::admin;
     friend baptswap_v2::fee_on_transfer;
-    friend baptswap_v2::ownership_transfers;
     friend baptswap_v2::router_v2;
     friend baptswap_v2::swap_v2;
     friend baptswap_v2::stake;

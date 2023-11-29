@@ -196,34 +196,11 @@ module baptswap_v2::router_v2 {
         assert_pair_is_created<X, Y>();
         let x_in = if (swap_utils::sort_token_type<X, Y>()) {
             let (rin, rout, _) = swap_v2::token_reserves<X, Y>();
-            // if output amount reserve is 0; use APT instead of Y
-            if (rout == 0) {
-                assert!(type_info::type_of<X>() != type_info::type_of<AptosCoin>(), 1);
-                let (rin, aptrout, _) = swap_v2::token_reserves<X, AptosCoin>();
-
-                let total_fees = swap_v2::token_fees<X, AptosCoin>();
-                let amount_in = swap_utils::get_amount_in(y_out, rin, aptrout, total_fees);
-
-                swap_v2::swap_x_to_exact_y<X, AptosCoin>(sender, amount_in, y_out, signer::address_of(sender));
-            };
-
             let total_fees = swap_v2::token_fees<X, Y>();
             let amount_in = swap_utils::get_amount_in(y_out, rin, rout, total_fees);
-            
             swap_v2::swap_x_to_exact_y<X, Y>(sender, amount_in, y_out, signer::address_of(sender))
         } else {
             let (rout, rin, _) = swap_v2::token_reserves<Y, X>();
-            
-            if (rout == 0) {
-                assert!(type_info::type_of<X>() != type_info::type_of<AptosCoin>(), 1);
-                let (rin, aptrout, _) = swap_v2::token_reserves<Y, AptosCoin>();
-
-                let total_fees = swap_v2::token_fees<Y, AptosCoin>();
-                let amount_in = swap_utils::get_amount_in(y_out, rin, aptrout, total_fees);
-
-                swap_v2::swap_y_to_exact_x<Y, AptosCoin>(sender, amount_in, y_out, signer::address_of(sender));
-            };
-
             let total_fees = swap_v2::token_fees<Y, X>();
             let amount_in = swap_utils::get_amount_in(y_out, rin, rout, total_fees);
             swap_v2::swap_y_to_exact_x<Y, X>(sender, amount_in, y_out, signer::address_of(sender))

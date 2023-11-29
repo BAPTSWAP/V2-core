@@ -12,6 +12,7 @@ module baptswap_v2::admin {
     use std::string;
 
     // use aptos_std::debug;
+    use aptos_std::smart_table::{Self, SmartTable};
     use aptos_std::type_info;
 
     use aptos_framework::aptos_coin::{AptosCoin as APT};
@@ -25,9 +26,9 @@ module baptswap_v2::admin {
     use baptswap::u256;
 
     use baptswap_v2::constants;
+    use baptswap_v2::errors;
 
     friend baptswap_v2::fee_on_transfer;
-    friend baptswap_v2::ownership_transfers;
     friend baptswap_v2::stake;
     friend baptswap_v2::swap_v2;
 
@@ -44,6 +45,11 @@ module baptswap_v2::admin {
         treasury_fee_modifier: u128
     }
 
+    // Global storage for pending ownership transfer
+    struct Pending has key {
+        table: SmartTable<u64, address>  // <id, ownership offer>
+    }
+
     // --------------------
     // Initialize Functions
     // --------------------
@@ -54,11 +60,79 @@ module baptswap_v2::admin {
         // initialize swap info
         move_to(&resource_signer, AdminInfo {
             signer_cap,
-            treasury_address: @baptswap_v2, // TODO: tbs
-            admin: @baptswap_v2, // TODO: tbs
+            treasury_address: @treasury,
+            admin: @admin,
             liquidity_fee_modifier: 30,  // 0.3%
             treasury_fee_modifier: 60,   // 0.6%
         });
+
+        move_to(&resource_signer, Pending { table: smart_table::new<u64, address>() });
+    }
+
+    // from the perspective of the sender
+    public entry fun offer_admin_previliges(signer_ref: &signer, receiver_addr: address, id: u64) acquires AdminInfo, Pending {
+        // assert signer is the admin
+        assert!(signer::address_of(signer_ref) == get_admin(), errors::not_admin());
+        // assert receiver_addr is not the admin
+        assert!(receiver_addr != get_admin(), errors::same_address());
+        // create a new table entry
+        smart_table::add<u64, address>(&mut borrow_global_mut<Pending>(constants::get_resource_account_address()).table, id, receiver_addr)
+    }
+
+    public entry fun offer_treasury_previliges(signer_ref: &signer, receiver_addr: address, id: u64) acquires AdminInfo, Pending {
+        // assert signer is the admin
+        assert!(signer::address_of(signer_ref) == get_admin(), errors::not_admin());
+        // assert receiver_addr is not the admin
+        assert!(receiver_addr != get_treasury_address(), errors::same_address());
+        // create a new table entry
+        smart_table::add<u64, address>(&mut borrow_global_mut<Pending>(constants::get_resource_account_address()).table, id, receiver_addr)
+    }
+
+    public entry fun cancel_admin_previliges(signer_ref: &signer, id: u64) acquires Pending {
+        // destruct the pending resource
+        smart_table::remove<u64, address>(&mut borrow_global_mut<Pending>(constants::get_resource_account_address()).table, id);
+    }
+
+    public entry fun cancel_treasury_previliges(signer_ref: &signer, id: u64) acquires Pending {
+        // destruct the pending resource
+        smart_table::remove<u64, address>(&mut borrow_global_mut<Pending>(constants::get_resource_account_address()).table, id);
+    }
+
+    // from the perspective of the receiver
+    public entry fun claim_admin_previliges(signer_ref: &signer, id: u64) acquires AdminInfo, Pending {
+        // assert id exists and the signer is the receiver
+        assert!(smart_table::contains<u64, address>(&borrow_global_mut<Pending>(constants::get_resource_account_address()).table, id), 1);
+        assert!(signer::address_of(signer_ref) == *smart_table::borrow(&borrow_global_mut<Pending>(constants::get_resource_account_address()).table, id), 1);
+        // update admin info 
+        set_admin(*smart_table::borrow(&borrow_global_mut<Pending>(constants::get_resource_account_address()).table, id));
+        // remove the entry
+        smart_table::remove<u64, address>(&mut borrow_global_mut<Pending>(constants::get_resource_account_address()).table, id);
+    }
+
+    public entry fun claim_treasury_previliges(signer_ref: &signer, id: u64) acquires AdminInfo, Pending {
+        // assert id exists and the signer is the receiver
+        assert!(smart_table::contains<u64, address>(&borrow_global_mut<Pending>(constants::get_resource_account_address()).table, id), 1);
+        assert!(signer::address_of(signer_ref) == *smart_table::borrow(&borrow_global_mut<Pending>(constants::get_resource_account_address()).table, id), 1);
+        // update admin info 
+        set_treasury_address(*smart_table::borrow(&borrow_global_mut<Pending>(constants::get_resource_account_address()).table, id));
+        // remove the entry
+        smart_table::remove<u64, address>(&mut borrow_global_mut<Pending>(constants::get_resource_account_address()).table, id);
+    }
+
+    public entry fun reject_admin_previliges(signer_ref: &signer, id: u64) acquires Pending {
+        // assert signer is the receiver
+        assert!(smart_table::contains<u64, address>(&borrow_global_mut<Pending>(constants::get_resource_account_address()).table, id), 1);
+        assert!(signer::address_of(signer_ref) == *smart_table::borrow(&borrow_global_mut<Pending>(constants::get_resource_account_address()).table, id), 1);
+        // remove the entry
+        smart_table::remove<u64, address>(&mut borrow_global_mut<Pending>(constants::get_resource_account_address()).table, id);
+    }
+
+    public entry fun reject_treasury_previliges(signer_ref: &signer, id: u64) acquires Pending {
+        // assert signer is the receiver
+        assert!(smart_table::contains<u64, address>(&borrow_global_mut<Pending>(constants::get_resource_account_address()).table, id), 1);
+        assert!(signer::address_of(signer_ref) == *smart_table::borrow(&borrow_global_mut<Pending>(constants::get_resource_account_address()).table, id), 1);
+        // remove the entry
+        smart_table::remove<u64, address>(&mut borrow_global_mut<Pending>(constants::get_resource_account_address()).table, id);
     }
 
     // --------
@@ -66,14 +140,14 @@ module baptswap_v2::admin {
     // --------
 
     // Set treasury_address; follow the two step ownership transfer pattern
-    public(friend) fun set_treasury_address(new_treasury_address: address) acquires AdminInfo {
+    fun set_treasury_address(new_treasury_address: address) acquires AdminInfo {
         let swap_info = borrow_global_mut<AdminInfo>(@baptswap_v2);
         // update the treasury address
         swap_info.treasury_address = new_treasury_address;
     }
 
     // Set admin; follow the two step ownership transfer pattern
-    public(friend) fun set_admin(new_admin: address) acquires AdminInfo {
+    fun set_admin(new_admin: address) acquires AdminInfo {
         let swap_info = borrow_global_mut<AdminInfo>(@baptswap_v2);
         // update the admin
         swap_info.admin = new_admin;
@@ -150,4 +224,11 @@ module baptswap_v2::admin {
         if (total_fees_numerator <= constants::get_fee_threshold_numerator()) true else false
     }
 
+    #[test_only]
+    friend baptswap_v2::swap_v2_test;
+
+    #[test_only]
+    public fun init_test(sender: &signer) {
+        init_module(sender)
+    }
 }

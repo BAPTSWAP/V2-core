@@ -102,10 +102,6 @@ module baptswap_v2::swap_v2 {
     // Events
     // ------
 
-    struct SwapInfo has key {
-        pair_created: event::EventHandle<PairCreatedEvent>
-    }
-
     struct PairCreatedEvent has drop, store {
         user: address,
         token_x: string::String,
@@ -123,16 +119,14 @@ module baptswap_v2::swap_v2 {
         user: address,
         amount_x: u64,
         amount_y: u64,
-        liquidity: u64,
-
+        liquidity: u64
     }
 
     struct RemoveLiquidityEvent<phantom X, phantom Y> has drop, store {
         user: address,
         liquidity: u64,
         amount_x: u64,
-        amount_y: u64,
-
+        amount_y: u64
     }
 
     struct SwapEvent<phantom X, phantom Y> has drop, store {
@@ -192,14 +186,12 @@ module baptswap_v2::swap_v2 {
         );
     }
 
-    // --------------------
-    // Initialize Functions
-    // --------------------
-
-    fun init_module(sender: &signer) {
-        let signer_cap = resource_account::retrieve_resource_account_cap(sender, @dev_2);
-        let resource_signer = account::create_signer_with_capability(&signer_cap);
-        move_to(&resource_signer, SwapInfo { pair_created: account::new_event_handle<PairCreatedEvent>(&resource_signer) });
+    public fun pair_created_event(
+        user: address,
+        token_x: string::String,
+        token_y: string::String
+    ): PairCreatedEvent {
+        PairCreatedEvent { user, token_x, token_y }
     }
 
     // ---------------
@@ -251,7 +243,6 @@ module baptswap_v2::swap_v2 {
         // TODO: assert FeeOnTransferInfo<CoinType> is registered in the pair
 
         let metadata = borrow_global_mut<TokenPairMetadata<X, Y>>(constants::get_resource_account_address());
-        let fee_on_transfer = fee_on_transfer::get_info<CoinType>();
         // if cointype = x
         if (type_info::type_of<CoinType>() == type_info::type_of<X>()) {
             // if activate = true
@@ -283,7 +274,6 @@ module baptswap_v2::swap_v2 {
         // TODO: assert FeeOnTransferInfo<CoinType> is registered in the pair
 
         let metadata = borrow_global_mut<TokenPairMetadata<X, Y>>(constants::get_resource_account_address());
-        let fee_on_transfer = fee_on_transfer::get_info<CoinType>();
         // if cointype = x
         if (type_info::type_of<CoinType>() == type_info::type_of<X>()) {
             // if activate = true
@@ -370,7 +360,7 @@ module baptswap_v2::swap_v2 {
     // Create the specified coin pair; all fees are toggled off
     public(friend) fun create_pair<X, Y>(
         sender: &signer,
-    ) acquires SwapInfo {
+    ) {
         assert!(!is_pair_created<X, Y>(), errors::already_initialized());
 
         let sender_addr = signer::address_of(sender);
@@ -440,15 +430,7 @@ module baptswap_v2::swap_v2 {
         let token_x = type_info::type_name<X>();
         let token_y = type_info::type_name<Y>();
 
-        let swap_info = borrow_global_mut<SwapInfo>(constants::get_resource_account_address());
-        event::emit_event<PairCreatedEvent>(
-            &mut swap_info.pair_created,
-            PairCreatedEvent {
-                user: sender_addr,
-                token_x,
-                token_y
-            }
-        );
+        pair_created_event(sender_addr, token_x, token_y);
 
         // create LP CoinStore , which is needed as a lock for minimum_liquidity
         register_lp<X, Y>(&resource_signer);
@@ -458,7 +440,6 @@ module baptswap_v2::swap_v2 {
     public(friend) fun add_fee_on_transfer_in_pair<CoinType, X, Y>(
         sender: &signer
     ) acquires TokenPairMetadata {
-        let sender_addr = signer::address_of(sender);
         // assert sender is the token owner of CoinType
         assert!(deployer::is_coin_owner<CoinType>(sender), errors::not_owner());
         
@@ -527,7 +508,7 @@ module baptswap_v2::swap_v2 {
         // distribute DEX fees and update reserves
         distribute_dex_fees<X, Y>(amount_in);
         // distrubute fees and update reserves
-        distribute_fee_on_transfer<X, Y>(amount_in);
+        distribute_fee_on_transfer_fees<X, Y>(amount_in);
 
         assert!(coin::value<X>(&coins_x_out) == 0, errors::insufficient_output_amount());
         (coins_x_out, coins_y_out)
@@ -570,9 +551,9 @@ module baptswap_v2::swap_v2 {
         // distribute DEX fees and update reserves
         distribute_dex_fees<X, Y>(amount_in);
         // distrubute fees and update reserves
-        distribute_fee_on_transfer<X, Y>(amount_in);
+        distribute_fee_on_transfer_fees<X, Y>(amount_in);
 
-        assert!(coin::value<X>(&coins_x_out) == amount_out, errors::insufficient_output_amount());
+        assert!(coin::value<X>(&coins_x_out) == 0, errors::insufficient_output_amount());
         (coins_x_out, coins_y_out)
     }
 
@@ -628,7 +609,7 @@ module baptswap_v2::swap_v2 {
         // distribute DEX fees and update reserves
         distribute_dex_fees<X, Y>(amount_in);
         // distrubute fees and update reserves
-        distribute_fee_on_transfer<X, Y>(amount_in);
+        distribute_fee_on_transfer_fees<X, Y>(amount_in);
 
         assert!(coin::value<Y>(&coins_y_out) == amount_out, errors::insufficient_output_amount());
         (coins_x_out, coins_y_out)
@@ -657,7 +638,7 @@ module baptswap_v2::swap_v2 {
         // distribute DEX fees and update reserves
         distribute_dex_fees<X, Y>(amount_in);
         // distrubute fees and update reserves
-        distribute_fee_on_transfer<X, Y>(amount_in);
+        distribute_fee_on_transfer_fees<X, Y>(amount_in);
 
         assert!(coin::value<Y>(&coins_y_out) == 0, errors::insufficient_output_amount());
         (coins_x_out, coins_y_out)
@@ -741,14 +722,11 @@ module baptswap_v2::swap_v2 {
 
     // calculate individual token fees amounts given token info
     inline fun calculate_fee_on_transfer_amounts<CoinType>(amount_in: u64): (u128, u128, u128) {
-        let token_liquidity_fee_numerator = fee_on_transfer::get_liquidity_fee<CoinType>();
-        let token_rewards_fee_numerator = fee_on_transfer::get_rewards_fee<CoinType>();
-        let token_team_fee_numerator = fee_on_transfer::get_team_fee<CoinType>();
         // calculate fee amounts
         (
-            utils::calculate_amount(token_liquidity_fee_numerator, amount_in),
-            utils::calculate_amount(token_rewards_fee_numerator, amount_in),
-            utils::calculate_amount(token_team_fee_numerator, amount_in),
+            utils::calculate_amount(fee_on_transfer::get_liquidity_fee<CoinType>(), amount_in),
+            utils::calculate_amount(fee_on_transfer::get_rewards_fee<CoinType>(), amount_in),
+            utils::calculate_amount(fee_on_transfer::get_team_fee<CoinType>(), amount_in),
         )
     }
 
@@ -756,8 +734,8 @@ module baptswap_v2::swap_v2 {
     inline fun calculate_dex_fees_amounts<CoinType>(amount_in: u64): (u128, u128) {
         // calculate fee amounts
         (
-            utils::calculate_amount(admin::get_treasury_fee_modifier(), amount_in),
-            utils::calculate_amount(admin::get_liquidity_fee_modifier(), amount_in)
+            utils::calculate_amount(admin::get_liquidity_fee_modifier(), amount_in),
+            utils::calculate_amount(admin::get_treasury_fee_modifier(), amount_in)
         )
     }
 
@@ -829,7 +807,7 @@ module baptswap_v2::swap_v2 {
     // used in swap functions to distribute fees and update reserves correspondingly
     // TODO: when extracting fees, we need to check if the token if fee is not zero (follow the same logic as in rewards_fees)
     // TODO: code duplication spotted, can be improved
-    fun distribute_fee_on_transfer<X, Y>(
+    fun distribute_fee_on_transfer_fees<X, Y>(
         amount_in: u64
     ) acquires TokenPairReserve, TokenPairMetadata {
         let metadata = borrow_global_mut<TokenPairMetadata<X, Y>>(constants::get_resource_account_address());
@@ -1069,14 +1047,5 @@ module baptswap_v2::swap_v2 {
     fun extract_y<X, Y>(amount: u64, metadata: &mut TokenPairMetadata<X, Y>): Coin<Y> {
         assert!(coin::value<Y>(&metadata.balance_y) > amount, errors::insufficient_amount());
         coin::extract(&mut metadata.balance_y, amount)
-    }
-
-    // -----
-    // Tests
-    // -----
-
-    #[test_only]
-    public fun initialize(sender: &signer) {
-        init_module(sender);
     }
 }

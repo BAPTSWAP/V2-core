@@ -61,7 +61,7 @@ module baptswap_v2::stake {
         assert!(deployer::is_coin_owner<X>(sender) || deployer::is_coin_owner<Y>(sender), errors::not_owner());
         // Assert either of the fee_on_transfer is intialized 
         // TODO: and != 0?
-        assert!(fee_on_transfer::is_created<X>(sender) || fee_on_transfer::is_created<Y>(sender), errors::fee_on_transfer_not_initialized());
+        assert!(fee_on_transfer::is_created<X>() || fee_on_transfer::is_created<Y>(), errors::fee_on_transfer_not_initialized());
         
         // Create the pool resource
         let resource_signer = admin::get_resource_signer();
@@ -440,24 +440,16 @@ module baptswap_v2::stake {
     #[view]
     // Get current accumulated fees for a token pair
     public fun get_rewards_fees_accumulated<X, Y>(): (u64, u64) acquires TokenPairRewardsPool {
-        let pool_balance_x = 0;
-        let pool_balance_y = 0;
+        assert!(is_pool_created<X, Y>(), errors::pool_not_created());
+        let pool = borrow_global_mut<TokenPairRewardsPool<X, Y>>(constants::get_resource_account_address());
 
-        if (is_pool_created<X, Y>()) {
-            let pool = borrow_global_mut<TokenPairRewardsPool<X, Y>>(constants::get_resource_account_address());
-
-            pool_balance_x = coin::value<X>(&pool.balance_x);
-            pool_balance_y = coin::value<Y>(&pool.balance_y);
-        };
-
-        (pool_balance_x, pool_balance_y)
+        (coin::value<X>(&pool.balance_x), coin::value<Y>(&pool.balance_y))
     }
 
     public(friend) fun distribute_rewards<X, Y>(
         rewards_x: coin::Coin<X>, 
         rewards_y: coin::Coin<Y>
     ) acquires TokenPairRewardsPool {
-        assert!(is_pool_created<X, Y>(), errors::pool_not_created());
         // Update pool
         update_pool<X, Y>(coin::value<X>(&rewards_x), coin::value<Y>(&rewards_y));
 

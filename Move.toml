@@ -4,13 +4,13 @@ version = "1.0.0"
 authors = []
 
 [addresses]
-
-bapt_framework = "b3f4d7c1db827da6291d3e082f22a5cf37b7b20f93bfdb13fe6b44f0d7622d9b"
-baptswap_v2 = "4ee0b37ec67bb47e8d5acf469c5282b93a78145b2ba268782bd7b1e73d411d7c"
+bapt_framework = "b1d76027a907d3597deb415de1f15103bf36e933468afa41d758487e1b62a663"
+baptswap_v2 = "4d054856f6afb8e25bb387a42f1e72c8b0deb999ab98b8ea4c8adf46273f8d63"
 dev_2 = "97c8aca6082f2ef7a0046c72eb81ebf203ca23086baf15557579570c86a89fd3"
 
 # to be set! testing only
 treasury = "0x438f261f7d74f1b04d3558165b0c91df8caa623f5adb8e3dc6427f8c145fbbbb"
+admin = "0x438f261f7d74f1b04d3558165b0c91df8caa623f5adb8e3dc6427f8c145fbbbb"
 
 alice = "0x123"
 bob = "0x456"
@@ -20,7 +20,7 @@ bob = "0x456"
 
 [dependencies.AptosFramework]
 git = "https://github.com/aptos-labs/aptos-core.git"
-rev = "mainnet"
+rev = "testnet"
 subdir = "aptos-move/framework/aptos-framework"
 
 [dependencies.BaptSwap]

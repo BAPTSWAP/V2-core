@@ -186,7 +186,7 @@ module baptswap_v2::fee_on_transfer {
     
     #[view]
     // Checks if the fee on transfer is created
-    public fun is_created<CoinType>(signer_ref: &signer): bool {
-        exists<FeeOnTransferInfo<CoinType>>(signer::address_of(signer_ref))
+    public fun is_created<CoinType>(): bool {
+        exists<FeeOnTransferInfo<CoinType>>(constants::get_resource_account_address())
     }
 }
