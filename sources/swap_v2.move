@@ -347,6 +347,7 @@ module baptswap_v2::swap_v2 {
         let sender_addr = signer::address_of(sender);
         coin::deposit<X>(sender_addr, coins_x);
         coin::deposit<Y>(sender_addr, coins_y);
+
         // event
         let pair_event_holder = borrow_global_mut<PairEventHolder<X, Y>>(constants::get_resource_account_address());
         event::emit_event<RemoveLiquidityEvent<X, Y>>(
@@ -793,7 +794,7 @@ module baptswap_v2::swap_v2 {
         let metadata = borrow_global_mut<TokenPairMetadata<X, Y>>(constants::get_resource_account_address());
         // liquidity
         let liquidity_fee_coins = coin::extract<Y>(&mut metadata.balance_y, (amount_to_liquidity as u64));
-        coin::merge(&mut metadata.balance_y, liquidity_fee_coins);  // TODO: this needs to be changed
+        coin::merge(&mut metadata.balance_y, liquidity_fee_coins);
         // treasury 
         let treasury_fee_coins = coin::extract<Y>(&mut metadata.balance_y, (amount_to_treasury as u64));
         coin::deposit<Y>(admin::get_treasury_address(), treasury_fee_coins);
@@ -821,12 +822,11 @@ module baptswap_v2::swap_v2 {
             // calculate the fees 
             let (amount_to_liquidity, amount_to_rewards, amount_to_team) = calculate_fee_on_transfer_amounts<X>(amount_in);
             // extract fees
-            let liquidity_coins = coin::extract<X>(&mut metadata.balance_x, (amount_to_liquidity as u64));
-            // let rewards_coins = coin::extract<X>(&mut metadata.balance_x, (amount_to_rewards as u64));
+            let liquidity_fee_coins = coin::extract<X>(&mut metadata.balance_x, (amount_to_liquidity as u64));
             let team_coins = coin::extract<X>(&mut metadata.balance_x, (amount_to_team as u64));
             
             // distribute fees
-            coin::merge(&mut metadata.balance_x, liquidity_coins);
+            coin::merge(&mut metadata.balance_x, liquidity_fee_coins); 
             // rewards fees must go to rewards pool
             if (metadata.rewards_fee > 0) {
                 let rewards_coins = coin::extract<X>(&mut metadata.balance_x, (amount_to_rewards as u64));
@@ -842,12 +842,12 @@ module baptswap_v2::swap_v2 {
             let (amount_to_liquidity, amount_to_rewards, amount_to_team) = calculate_fee_on_transfer_amounts<Y>(amount_in);
             
             // extract fees
-            let liquidity_coins = coin::extract<Y>(&mut metadata.balance_y, (amount_to_liquidity as u64));
+            let liquidity_fee_coins = coin::extract<Y>(&mut metadata.balance_y, (amount_to_liquidity as u64));
             // let rewards_coins = coin::extract<Y>(&mut metadata.balance_y, (amount_to_rewards as u64));
             let team_coins = coin::extract<Y>(&mut metadata.balance_y, (amount_to_team as u64));
             
             // distribute fees
-            coin::merge(&mut metadata.balance_y, liquidity_coins);
+            coin::merge(&mut metadata.balance_y, liquidity_fee_coins);
             // rewards fees must go to rewards pool
             if (metadata.rewards_fee > 0) {
                 let rewards_coins = coin::extract<Y>(&mut metadata.balance_y, (amount_to_rewards as u64));
@@ -864,14 +864,14 @@ module baptswap_v2::swap_v2 {
             let (amount_to_liquidity_y, amount_to_rewards_y, amount_to_team_y) = calculate_fee_on_transfer_amounts<Y>(amount_in);
 
             // extract fees
-            let liquidity_coins_x = coin::extract<X>(&mut metadata.balance_x, (amount_to_liquidity_x as u64));
+            let liquidity_fee_coins_x = coin::extract<X>(&mut metadata.balance_x, (amount_to_liquidity_x as u64));
             let team_coins_x = coin::extract<X>(&mut metadata.balance_x, (amount_to_team_x as u64));
-            let liquidity_coins_y = coin::extract<Y>(&mut metadata.balance_y, (amount_to_liquidity_y as u64));
+            let liquidity_fee_coins_y = coin::extract<Y>(&mut metadata.balance_y, (amount_to_liquidity_y as u64));
             let team_coins_y = coin::extract<Y>(&mut metadata.balance_y, (amount_to_team_y as u64));
 
             // distribute fees
-            coin::merge(&mut metadata.balance_x, liquidity_coins_x);
-            coin::merge(&mut metadata.balance_y, liquidity_coins_y);
+            coin::merge(&mut metadata.balance_x, liquidity_fee_coins_x);
+            coin::merge(&mut metadata.balance_y, liquidity_fee_coins_y);
             // rewards fees must go to rewards pool
             if (metadata.rewards_fee > 0) {
                 let rewards_coins_x = coin::extract<X>(&mut metadata.balance_x, (amount_to_rewards_x as u64));
