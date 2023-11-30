@@ -5,20 +5,12 @@
 module baptswap_v2::stake {
 
     use std::signer;
-    use std::option::{Self, Option};
-    use std::string;
 
     // use aptos_std::debug;
-    use aptos_std::type_info;
 
-    use aptos_framework::aptos_coin::{AptosCoin as APT};
-    use aptos_framework::coin::{Self, Coin};
-    use aptos_framework::timestamp;
-    use aptos_framework::account;
-    use aptos_framework::resource_account;
+    use aptos_framework::coin;
 
     use baptswap::math;
-    use baptswap::swap_utils;
     use baptswap::u256;
 
     use bapt_framework::deployer;

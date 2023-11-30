@@ -156,6 +156,7 @@ module baptswap_v2::swap_v2_test {
 
         // Initialize rewards pool
         router_v2::create_rewards_pool<TestBAPT, TestMAU>(bob, false);
+        // router_v2::create_rewards_pool<APT, TestBAPT>(alice, false);
         let response = stake::is_pool_created<TestBAPT, TestMAU>();
         debug::print<bool>(&response); 
 

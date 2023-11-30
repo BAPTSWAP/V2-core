@@ -28,12 +28,10 @@ module baptswap_v2::swap_v2 {
     // use aptos_std::debug;
     use aptos_std::type_info;
 
-    use aptos_framework::aptos_coin::{AptosCoin as APT};
     use aptos_framework::coin::{Self, Coin};
     use aptos_framework::event;
     use aptos_framework::timestamp;
     use aptos_framework::account;
-    use aptos_framework::resource_account;
 
     use baptswap::math;
     use baptswap::swap_utils;
@@ -269,6 +267,12 @@ module baptswap_v2::swap_v2 {
         sender: &signer,
         activate: bool,
     ) acquires TokenPairMetadata {
+        // assert CoinType is either X or Y
+        assert!(
+            type_info::type_of<CoinType>() == type_info::type_of<X>()
+            || type_info::type_of<CoinType>() == type_info::type_of<Y>(),
+            errors::coin_type_does_not_match_x_or_y()
+        );
         // assert sender is token owner
         assert!(deployer::is_coin_owner<CoinType>(sender), errors::not_owner());
         // TODO: assert FeeOnTransferInfo<CoinType> is registered in the pair
@@ -436,18 +440,17 @@ module baptswap_v2::swap_v2 {
         register_lp<X, Y>(&resource_signer);
     }
 
-    // Register a pair; callable only by token owners
+    // Register a pair; callable only by token owners; a one time operation in a pair
     public(friend) fun add_fee_on_transfer_in_pair<CoinType, X, Y>(
         sender: &signer
     ) acquires TokenPairMetadata {
         // assert sender is the token owner of CoinType
         assert!(deployer::is_coin_owner<CoinType>(sender), errors::not_owner());
-        
         // assert CoinType is either X or Y
         assert!(
             type_info::type_of<CoinType>() == type_info::type_of<X>()
             || type_info::type_of<CoinType>() == type_info::type_of<Y>(),
-            1
+            errors::coin_type_does_not_match_x_or_y()
         );
         // TODO: assert the token owner didn't register that pair already
         // assert!(!is_token_registered_in_pair<CoinType, X, Y>(sender, pair), 1);
@@ -790,7 +793,7 @@ module baptswap_v2::swap_v2 {
         let metadata = borrow_global_mut<TokenPairMetadata<X, Y>>(constants::get_resource_account_address());
         // liquidity
         let liquidity_fee_coins = coin::extract<Y>(&mut metadata.balance_y, (amount_to_liquidity as u64));
-        coin::merge(&mut metadata.balance_y, liquidity_fee_coins);
+        coin::merge(&mut metadata.balance_y, liquidity_fee_coins);  // TODO: this needs to be changed
         // treasury 
         let treasury_fee_coins = coin::extract<Y>(&mut metadata.balance_y, (amount_to_treasury as u64));
         coin::deposit<Y>(admin::get_treasury_address(), treasury_fee_coins);

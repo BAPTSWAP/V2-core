@@ -4,29 +4,15 @@
 
 module baptswap_v2::fee_on_transfer {
 
-    use aptos_framework::account;
-    use aptos_framework::aptos_coin::{AptosCoin as APT};
-    use aptos_framework::coin::{Self, Coin};
-    use aptos_framework::timestamp;
-    use aptos_framework::resource_account;
-
     // use aptos_std::debug;
-    use aptos_std::type_info;
-
-    use baptswap::math;
-    use baptswap::swap_utils;
-    use baptswap::u256;
 
     use bapt_framework::deployer;
 
     use baptswap_v2::admin;
     use baptswap_v2::constants;
     use baptswap_v2::errors;
-    use baptswap_v2::utils;
 
     use std::signer;
-    use std::option::{Self, Option};
-    use std::string;
 
     friend baptswap_v2::router_v2;
     friend baptswap_v2::swap_v2;
@@ -57,11 +43,9 @@ module baptswap_v2::fee_on_transfer {
         // assert that the token info is not initialized yet
         assert!(!exists<FeeOnTransferInfo<CoinType>>(constants::get_resource_account_address()), errors::already_initialized());
         assert!(deployer::is_coin_owner<CoinType>(sender), errors::not_owner());
-        // assert that the fees do not exceed the thresholds
-        let new_dex_fees = admin::get_dex_fees() + liquidity_fee;
+        // assert that the fees do not exceed the threshold
         let fee_on_transfer = liquidity_fee + rewards_fee + team_fee;
-        assert!(admin::does_not_exceed_dex_fee_threshold(new_dex_fees), 1);
-        assert!(does_not_exceed_fee_on_transfer_threshold(fee_on_transfer) == true, 1);
+        assert!(does_not_exceed_fee_on_transfer_threshold(fee_on_transfer), errors::excessive_fee());
         // move token info under the resource account
         let resource_signer = &admin::get_resource_signer();
         move_to(
@@ -90,11 +74,11 @@ module baptswap_v2::fee_on_transfer {
         // assert sender is token owner of CoinType
         assert!(deployer::is_coin_owner<CoinType>(sender), errors::not_owner());
         // assert new fee is not equal to the existing fee
-        assert!(new_fee != fee_on_transfer_liquidity_fee, 1);
+        assert!(new_fee != fee_on_transfer_liquidity_fee, errors::already_initialized());
         // assert the newer total fee is less than the threshold
         assert!(
             does_not_exceed_fee_on_transfer_threshold(new_fee + fee_on_transfer.rewards_fee_modifier + fee_on_transfer.team_fee_modifier), 
-            1
+            errors::excessive_fee()
         );
         // update the fee
         fee_on_transfer.liquidity_fee_modifier = new_fee;
@@ -107,7 +91,7 @@ module baptswap_v2::fee_on_transfer {
         // assert sender is token owner of CoinType
         assert!(deployer::is_coin_owner<CoinType>(sender), errors::not_owner());
         // assert new fee is not equal to the existing fee
-        assert!(new_fee != fee_on_transfer_rewards_fee, 1);
+        assert!(new_fee != fee_on_transfer_rewards_fee, errors::already_initialized());
         // assert the newer total fee is less than the threshold
         assert!(
             does_not_exceed_fee_on_transfer_threshold(new_fee + fee_on_transfer.liquidity_fee_modifier + fee_on_transfer.team_fee_modifier), 
@@ -124,7 +108,7 @@ module baptswap_v2::fee_on_transfer {
         // assert sender is token owner of CoinType
         assert!(deployer::is_coin_owner<CoinType>(sender), errors::not_owner());
         // assert new fee is not equal to the existing fee
-        assert!(new_fee != fee_on_transfer_team_fee, 1);
+        assert!(new_fee != fee_on_transfer_team_fee, errors::already_initialized());
         // assert the newer total fee is less than the threshold
         assert!(
             does_not_exceed_fee_on_transfer_threshold(new_fee + fee_on_transfer.liquidity_fee_modifier + fee_on_transfer.rewards_fee_modifier), 

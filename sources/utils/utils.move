@@ -1,22 +1,8 @@
 module baptswap_v2::utils {
 
     use std::signer;
-    use std::option::{Self, Option};
-    use std::string;
-
     // use aptos_std::debug;
-    use aptos_std::type_info;
-
-    use aptos_framework::aptos_coin::{AptosCoin as APT};
     use aptos_framework::coin::{Self, Coin};
-    use aptos_framework::event::{Self, EventHandle};
-    use aptos_framework::timestamp;
-    use aptos_framework::account;
-    use aptos_framework::resource_account;
-
-    use baptswap::math;
-    use baptswap::swap_utils;
-    use baptswap::u256;
 
     friend baptswap_v2::stake;
     friend baptswap_v2::swap_v2;
