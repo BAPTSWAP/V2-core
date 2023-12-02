@@ -353,10 +353,6 @@ module baptswap_v2::stake {
         let x_token_per_share_u256 = u256::from_u64(0u64);
         let y_token_per_share_u256 = u256::from_u64(0u64);
 
-        // init total residual coins
-        let x_token_total_residual_coins = 0u128;
-        let y_token_total_residual_coins = 0u128;
-
         if (reward_x > 0) {
             // acc_token_per_share = acc_token_per_share + (reward * precision_factor) / total_stake;
             x_token_per_share_u256 = u256::add(
@@ -407,8 +403,8 @@ module baptswap_v2::stake {
         );
         // assert!(x_token_expected_rewards >= u256::as_u128(x_token_per_share_u256), 1);
         // update total residual coins: total_residual_coins = total_residual_coins - oken_per_share_u256
-        x_token_total_residual_coins = x_token_expected_rewards - u256::as_u128(x_token_per_share_u256);
-        y_token_total_residual_coins = y_token_expected_rewards - u256::as_u128(y_token_per_share_u256);
+        let x_token_total_residual_coins = x_token_expected_rewards - u256::as_u128(x_token_per_share_u256);
+        let y_token_total_residual_coins = y_token_expected_rewards - u256::as_u128(y_token_per_share_u256);
 
         // if total_residual_coins > 0, update tokens per share: acc_token_per_share = acc_token_per_share + total_residual_coins
         if (x_token_total_residual_coins > 0u128) {

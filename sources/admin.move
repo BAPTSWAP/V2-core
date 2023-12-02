@@ -60,89 +60,89 @@ module baptswap_v2::admin {
     }
 
     // from the perspective of the sender
-    public entry fun offer_admin_previliges(signer_ref: &signer, receiver_addr: address, id: u64) acquires AdminInfo, Pending {
+    public entry fun offer_admin_previliges(signer_ref: &signer, receiver_addr: address, memo: u64) acquires AdminInfo, Pending {
         // assert signer is the admin
         assert!(signer::address_of(signer_ref) == get_admin(), errors::not_admin());
         // assert receiver_addr is not the admin
         assert!(receiver_addr != get_admin(), errors::same_address());
         // create a new table entry
-        smart_table::add<u64, address>(&mut borrow_global_mut<Pending>(constants::get_resource_account_address()).table, id, receiver_addr)
+        smart_table::add<u64, address>(&mut borrow_global_mut<Pending>(constants::get_resource_account_address()).table, memo, receiver_addr)
     }
 
-    public entry fun offer_treasury_previliges(signer_ref: &signer, receiver_addr: address, id: u64) acquires AdminInfo, Pending {
+    public entry fun offer_treasury_previliges(signer_ref: &signer, receiver_addr: address, memo: u64) acquires AdminInfo, Pending {
         // assert signer is the admin
         assert!(signer::address_of(signer_ref) == get_admin(), errors::not_admin());
         // assert receiver_addr is not the admin
         assert!(receiver_addr != get_treasury_address(), errors::same_address());
         // create a new table entry
-        smart_table::add<u64, address>(&mut borrow_global_mut<Pending>(constants::get_resource_account_address()).table, id, receiver_addr)
+        smart_table::add<u64, address>(&mut borrow_global_mut<Pending>(constants::get_resource_account_address()).table, memo, receiver_addr)
     }
 
-    public entry fun cancel_admin_previliges(signer_ref: &signer, id: u64) acquires AdminInfo, Pending {
+    public entry fun cancel_admin_previliges(signer_ref: &signer, memo: u64) acquires AdminInfo, Pending {
         // assert signer is the admin
         assert!(signer::address_of(signer_ref) == get_admin(), errors::not_admin());
         // destruct the pending resource
-        smart_table::remove<u64, address>(&mut borrow_global_mut<Pending>(constants::get_resource_account_address()).table, id);
+        smart_table::remove<u64, address>(&mut borrow_global_mut<Pending>(constants::get_resource_account_address()).table, memo);
     }
 
-    public entry fun cancel_treasury_previliges(signer_ref: &signer, id: u64) acquires AdminInfo, Pending {
+    public entry fun cancel_treasury_previliges(signer_ref: &signer, memo: u64) acquires AdminInfo, Pending {
         // assert signer is the treausry
         assert!(signer::address_of(signer_ref) == get_treasury_address(), errors::not_admin());
         // destruct the pending resource
-        smart_table::remove<u64, address>(&mut borrow_global_mut<Pending>(constants::get_resource_account_address()).table, id);
+        smart_table::remove<u64, address>(&mut borrow_global_mut<Pending>(constants::get_resource_account_address()).table, memo);
     }
 
     // from the perspective of the receiver
-    public entry fun claim_admin_previliges(signer_ref: &signer, id: u64) acquires AdminInfo, Pending {
+    public entry fun claim_admin_previliges(signer_ref: &signer, memo: u64) acquires AdminInfo, Pending {
         // assert signer is the one recieving the previliges
         let signer_addr = signer::address_of(signer_ref);
         assert!(
-            smart_table::borrow<u64, address>(&borrow_global_mut<Pending>(constants::get_resource_account_address()).table, id)
+            smart_table::borrow<u64, address>(&borrow_global_mut<Pending>(constants::get_resource_account_address()).table, memo)
             == &signer_addr, 
             errors::not_owner()
         );
         // update admin info 
-        set_admin(*smart_table::borrow(&borrow_global_mut<Pending>(constants::get_resource_account_address()).table, id));
+        set_admin(*smart_table::borrow(&borrow_global_mut<Pending>(constants::get_resource_account_address()).table, memo));
         // remove the entry
-        smart_table::remove<u64, address>(&mut borrow_global_mut<Pending>(constants::get_resource_account_address()).table, id);
+        smart_table::remove<u64, address>(&mut borrow_global_mut<Pending>(constants::get_resource_account_address()).table, memo);
     }
 
-    public entry fun claim_treasury_previliges(signer_ref: &signer, id: u64) acquires AdminInfo, Pending {
+    public entry fun claim_treasury_previliges(signer_ref: &signer, memo: u64) acquires AdminInfo, Pending {
         // assert signer is the one recieving the previliges
         let signer_addr = signer::address_of(signer_ref);
         assert!(
-            smart_table::borrow<u64, address>(&borrow_global_mut<Pending>(constants::get_resource_account_address()).table, id)
+            smart_table::borrow<u64, address>(&borrow_global_mut<Pending>(constants::get_resource_account_address()).table, memo)
             == &signer_addr, 
             errors::not_owner()
         );
         // update admin info 
-        set_treasury_address(*smart_table::borrow(&borrow_global_mut<Pending>(constants::get_resource_account_address()).table, id));
+        set_treasury_address(*smart_table::borrow(&borrow_global_mut<Pending>(constants::get_resource_account_address()).table, memo));
         // remove the entry
-        smart_table::remove<u64, address>(&mut borrow_global_mut<Pending>(constants::get_resource_account_address()).table, id);
+        smart_table::remove<u64, address>(&mut borrow_global_mut<Pending>(constants::get_resource_account_address()).table, memo);
     }
 
-    public entry fun reject_admin_previliges(signer_ref: &signer, id: u64) acquires Pending {
+    public entry fun reject_admin_previliges(signer_ref: &signer, memo: u64) acquires Pending {
         // assert signer is the one recieving the previliges
         let signer_addr = signer::address_of(signer_ref);
         assert!(
-            smart_table::borrow<u64, address>(&borrow_global_mut<Pending>(constants::get_resource_account_address()).table, id)
+            smart_table::borrow<u64, address>(&borrow_global_mut<Pending>(constants::get_resource_account_address()).table, memo)
             == &signer_addr, 
             errors::not_owner()
         );
         // remove the entry
-        smart_table::remove<u64, address>(&mut borrow_global_mut<Pending>(constants::get_resource_account_address()).table, id);
+        smart_table::remove<u64, address>(&mut borrow_global_mut<Pending>(constants::get_resource_account_address()).table, memo);
     }
 
-    public entry fun reject_treasury_previliges(signer_ref: &signer, id: u64) acquires Pending {
+    public entry fun reject_treasury_previliges(signer_ref: &signer, memo: u64) acquires Pending {
         // assert signer is the one recieving the previliges
         let signer_addr = signer::address_of(signer_ref);
         assert!(
-            smart_table::borrow<u64, address>(&borrow_global_mut<Pending>(constants::get_resource_account_address()).table, id)
+            smart_table::borrow<u64, address>(&borrow_global_mut<Pending>(constants::get_resource_account_address()).table, memo)
             == &signer_addr, 
             errors::not_owner()
         );
         // remove the entry
-        smart_table::remove<u64, address>(&mut borrow_global_mut<Pending>(constants::get_resource_account_address()).table, id);
+        smart_table::remove<u64, address>(&mut borrow_global_mut<Pending>(constants::get_resource_account_address()).table, memo);
     }
 
     // --------
