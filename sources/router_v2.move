@@ -173,8 +173,12 @@ module baptswap_v2::router_v2 {
     public entry fun swap_exact_input<X, Y>(
         sender: &signer,
         x_in: u64,
-        y_min_out: u64,
+        y_min_out: u64
     ) {
+        swap_exact_input_internal<X, Y>(sender, x_in, y_min_out);
+    }
+
+    fun swap_exact_input_internal<X, Y>(sender: &signer, x_in: u64, y_min_out: u64): u64 {
         assert_pair_is_created<X, Y>();
         let y_out = if (swap_utils::sort_token_type<X, Y>()) {
             swap_v2::swap_exact_x_to_y<X, Y>(sender, x_in, signer::address_of(sender))
@@ -183,14 +187,58 @@ module baptswap_v2::router_v2 {
         };
         assert!(y_out >= y_min_out, errors::output_less_than_min());
         add_swap_event_internal<X, Y>(sender, x_in, 0, 0, y_out);
+
+        y_out
     }
 
-    // Swap miniumn possible amount of X to exact output amount of Y
-    public entry fun swap_exact_output<X, Y>(
+        // multi-hop
+    // swap X for Y while pair<X, Y> doesn't exist, intermidiate token is Z
+    
+    public fun multi_hop_exact_input<X, Y, Z>(sender: &signer, x_in: u64, y_min_out: u64) {
+        // if <X,Y> pair is created, swap X for Y
+        if (swap_v2::is_pair_created<X, Y>()) { swap_exact_input<X, Y>(sender, x_in, y_min_out) }
+        else {
+            let z_in = swap_exact_input_internal<X, Z>(sender, x_in, 0);    // TODO: should not be 0
+            swap_exact_input_internal<Z, Y>(sender, z_in, y_min_out);
+        }
+    }
+
+    public entry fun swap_exact_input_with_z_as_intermidiate<X, Y, Z>(
         sender: &signer,
-        y_out: u64,
-        x_max_in: u64,
-    ) {
+        x_in: u64,
+        y_min_out: u64
+    ) { multi_hop_exact_input<X, Y, Z>(sender, x_in, y_min_out); }
+
+    // Z is APT
+    public entry fun swap_exact_input_with_apt_as_intermidiate<X, Y>(
+        sender: &signer,
+        x_in: u64,
+        y_min_out: u64
+    ) { swap_exact_input_with_z_as_intermidiate<X, Y, APT>( sender, x_in, y_min_out) }
+        
+    // TODO: Z is BAPT
+
+    // TODO: Z is USDC
+
+    // Swap miniumn possible amount of X to exact output amount of Y
+    public entry fun swap_exact_output<X, Y>(sender: &signer, y_out: u64, x_max_in: u64) {
+        swap_exact_output_internal<X, Y>(sender, y_out, x_max_in);
+    }
+
+    public fun multi_hop_exact_output<X, Y, Z>(sender: &signer, y_out: u64, x_max_in: u64) {
+        // if <X,Y> pair is created, swap X for Y
+        if (swap_v2::is_pair_created<X, Y>()) { swap_exact_output<X, Y>(sender, y_out, x_max_in) }
+        else {
+            let z_out = swap_exact_output_internal<Z, Y>(sender, y_out, 0);    // TODO: should not be 0
+            swap_exact_output_internal<X, Z>(sender, z_out, x_max_in); 
+        }   
+    }
+
+    // TODO: Z is BAPT
+
+    // TODO: Z is USDC
+
+    fun swap_exact_output_internal<X, Y>(sender: &signer, y_out: u64, x_max_in: u64): u64 {
         assert_pair_is_created<X, Y>();
         let x_in = if (swap_utils::sort_token_type<X, Y>()) {
             let (rin, rout, _) = swap_v2::token_reserves<X, Y>();
@@ -205,43 +253,24 @@ module baptswap_v2::router_v2 {
         };
         assert!(x_in <= x_max_in, errors::input_more_than_max());
         add_swap_event_internal<X, Y>(sender, x_in, 0, 0, y_out);
+
+        x_in
     }
 
-    fun get_intermediate_output<X, Y>(is_x_to_y: bool, x_in: coin::Coin<X>): coin::Coin<Y> {
-        if (is_x_to_y) {
-            let (x_out, y_out) = swap_v2::swap_exact_x_to_y_direct<X, Y>(x_in);
-            coin::destroy_zero(x_out);
-            y_out
-        }
-        else {
-            let (y_out, x_out) = swap_v2::swap_exact_y_to_x_direct<Y, X>(x_in);
-            coin::destroy_zero(x_out);
-            y_out
-        }
-    }
+    public entry fun swap_exact_output_with_z_as_intermidiate<X, Y, Z>(
+        sender: &signer,
+        y_out: u64,
+        x_max_in: u64
+    ) { multi_hop_exact_output<X, Y, Z>(sender, y_out, x_max_in); }
 
-    public fun swap_exact_x_to_y_direct_external<X, Y>(x_in: coin::Coin<X>): coin::Coin<Y> {
-        assert_pair_is_created<X, Y>();
-        let x_in_amount = coin::value(&x_in);
-        let is_x_to_y = swap_utils::sort_token_type<X, Y>();
-        let y_out = get_intermediate_output<X, Y>(is_x_to_y, x_in);
-        let y_out_amount = coin::value(&y_out);
-        add_swap_event_with_address_internal<X, Y>(@zero, x_in_amount, 0, 0, y_out_amount);
-        y_out
-    }
+    // Z is APT
+    public entry fun swap_exact_output_with_apt_as_intermidiate<X, Y>(
+        sender: &signer,
+        y_out: u64,
+        x_max_in: u64
+    ) { swap_exact_output_with_z_as_intermidiate<X, Y, APT>( sender, y_out, x_max_in) }
 
-    fun get_intermediate_output_x_to_exact_y<X, Y>(is_x_to_y: bool, x_in: coin::Coin<X>, amount_out: u64): coin::Coin<Y> {
-        if (is_x_to_y) {
-            let (x_out, y_out) = swap_v2::swap_x_to_exact_y_direct<X, Y>(x_in, amount_out);
-            coin::destroy_zero(x_out);
-            y_out
-        }
-        else {
-            let (y_out, x_out) = swap_v2::swap_y_to_exact_x_direct<Y, X>(x_in, amount_out);
-            coin::destroy_zero(x_out);
-            y_out
-        }
-    }
+    // TODO: Z and W are APT and BAPT
 
     fun get_amount_in_internal<X, Y>(is_x_to_y:bool, y_out_amount: u64): u64 {
         if (is_x_to_y) {
@@ -259,18 +288,6 @@ module baptswap_v2::router_v2 {
         assert_pair_is_created<X, Y>();
         let is_x_to_y = swap_utils::sort_token_type<X, Y>();
         get_amount_in_internal<X, Y>(is_x_to_y, y_out_amount)
-    }
-
-    public fun swap_x_to_exact_y_direct_external<X, Y>(x_in: coin::Coin<X>, y_out_amount:u64): (coin::Coin<X>, coin::Coin<Y>) {
-        assert_pair_is_created<X, Y>();
-        let is_x_to_y = swap_utils::sort_token_type<X, Y>();
-        let x_in_withdraw_amount = get_amount_in_internal<X, Y>(is_x_to_y, y_out_amount);
-        let x_in_amount = coin::value(&x_in);
-        assert!(x_in_amount >= x_in_withdraw_amount, errors::insufficient_x_amount());
-        let x_in_left = coin::extract(&mut x_in, x_in_amount - x_in_withdraw_amount);
-        let y_out = get_intermediate_output_x_to_exact_y<X, Y>(is_x_to_y, x_in, y_out_amount);
-        add_swap_event_with_address_internal<X, Y>(@zero, x_in_withdraw_amount, 0, 0, y_out_amount);
-        (x_in_left, y_out)
     }
 
     public entry fun register_lp<X, Y>(sender: &signer) {
