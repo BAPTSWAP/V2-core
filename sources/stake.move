@@ -352,6 +352,10 @@ module baptswap_v2::stake {
         let x_token_per_share_u256 = u256::from_u64(0u64);
         let y_token_per_share_u256 = u256::from_u64(0u64);
 
+        // init total residual coins
+        let x_token_total_residual_coins = u256::from_u64(0u64);
+        let y_token_total_residual_coins = u256::from_u64(0u64);
+
         if (reward_x > 0) {
             // acc_token_per_share = acc_token_per_share + (reward * precision_factor) / total_stake;
             x_token_per_share_u256 = u256::add(
@@ -376,6 +380,26 @@ module baptswap_v2::stake {
             );
         } else {
             y_token_per_share_u256 = u256::from_u128(last_magnified_dividends_per_share_y);
+        };
+
+        // calculate total residual coins: total_residual_coins = token_per_share * total_staked_token / precision_factor   
+        x_token_total_residual_coins = u256::div(
+            u256::mul(x_token_per_share_u256, u256::from_u64(total_staked_token)),
+            u256::from_u128(precision_factor)
+        );
+
+        y_token_total_residual_coins = u256::div(
+            u256::mul(y_token_per_share_u256, u256::from_u64(total_staked_token)),
+            u256::from_u128(precision_factor)
+        );
+
+        // if total_residual_coins > 0, update tokens per share: acc_token_per_share = acc_token_per_share + total_residual_coins
+        if (u256::as_u64(x_token_total_residual_coins) > 0) {
+            x_token_per_share_u256 = u256::add(x_token_per_share_u256, x_token_total_residual_coins);
+        };
+
+        if (u256::as_u64(y_token_total_residual_coins) > 0) {
+            y_token_per_share_u256 = u256::add(y_token_per_share_u256, y_token_total_residual_coins);
         };
 
         (u256::as_u128(x_token_per_share_u256), u256::as_u128(y_token_per_share_u256))
