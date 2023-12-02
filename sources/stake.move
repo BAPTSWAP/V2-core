@@ -385,9 +385,9 @@ module baptswap_v2::stake {
 
         // calculate total residual coins: 
         // TODO: which expression is more correct?
-        // total_residual_coins = token_per_share * total_staked_token   
+        // expected_rewards = token_per_share * total_staked_token   
         // OR
-        // total_residual_coins = token_per_share * total_staked_token / precision_factor
+        // expected_rewards = token_per_share * total_staked_token / precision_factor
         let x_token_expected_rewards = u256::as_u128(
             (
                 // u256::div(
