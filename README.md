@@ -29,7 +29,7 @@
 
 ## TODOs
 
-- [ ] Finish fixing the issues
+- [x] Finish fixing the issues
 - [x] Work on separate modules for rewards pool and fee on transfer
 - [x] Work on a proper error handling and messages
 - [ ] Unit testing
