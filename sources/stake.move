@@ -53,7 +53,6 @@ module baptswap_v2::stake {
         // Assert initializer is the owner of either X or Y
         assert!(deployer::is_coin_owner<X>(sender) || deployer::is_coin_owner<Y>(sender), errors::not_owner());
         // Assert either of the fee_on_transfer is intialized 
-        // TODO: and != 0?
         assert!(fee_on_transfer::is_created<X>() || fee_on_transfer::is_created<Y>(), errors::fee_on_transfer_not_initialized());
         
         // Create the pool resource
@@ -173,7 +172,7 @@ module baptswap_v2::stake {
     }
 
     // unstake tokens pair
-    public entry fun unstake_tokens<X, Y>(
+    public(friend) entry fun unstake_tokens<X, Y>(
         sender: &signer,
         amount: u64
     ) acquires TokenPairRewardsPool, RewardsPoolUserInfo {
@@ -380,40 +379,23 @@ module baptswap_v2::stake {
         };
 
         // calculate total residual coins: 
-        // TODO: which expression is more correct?
-        // expected_rewards = token_per_share * total_staked_token   
-        // OR
-        // expected_rewards = token_per_share * total_staked_token / precision_factor
         let x_token_expected_rewards = u256::as_u128(
             (
-                // u256::div(
+                u256::div(
                     u256::mul(x_token_per_share_u256, u256::from_u64(total_staked_token)),
-                //     u256::from_u128(precision_factor)
-                // )
+                    u256::from_u128(precision_factor)
+                )
             )
         );
 
         let y_token_expected_rewards = u256::as_u128(
             (
-                // u256::div(
+                u256::div(
                     u256::mul(y_token_per_share_u256, u256::from_u64(total_staked_token)),
-                //     u256::from_u128(precision_factor)
-                // )
+                    u256::from_u128(precision_factor)
+                )
             )
         );
-        // assert!(x_token_expected_rewards >= u256::as_u128(x_token_per_share_u256), 1);
-        // update total residual coins: total_residual_coins = total_residual_coins - oken_per_share_u256
-        let x_token_total_residual_coins = x_token_expected_rewards - u256::as_u128(x_token_per_share_u256);
-        let y_token_total_residual_coins = y_token_expected_rewards - u256::as_u128(y_token_per_share_u256);
-
-        // if total_residual_coins > 0, update tokens per share: acc_token_per_share = acc_token_per_share + total_residual_coins
-        if (x_token_total_residual_coins > 0u128) {
-            x_token_per_share_u256 = u256::add(x_token_per_share_u256, u256::from_u128(x_token_total_residual_coins));
-        };
-
-        if (y_token_total_residual_coins > 0u128) {
-            y_token_per_share_u256 = u256::add(y_token_per_share_u256, u256::from_u128(y_token_total_residual_coins));
-        };
 
         (u256::as_u128(x_token_per_share_u256), u256::as_u128(y_token_per_share_u256))
     }

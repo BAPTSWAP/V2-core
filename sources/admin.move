@@ -115,7 +115,7 @@ module baptswap_v2::admin {
             == &signer_addr, 
             errors::not_owner()
         );
-        // update admin info 
+        // update treasury address
         set_treasury_address(*smart_table::borrow(&borrow_global_mut<Pending>(constants::get_resource_account_address()).table, memo));
         // remove the entry
         smart_table::remove<u64, address>(&mut borrow_global_mut<Pending>(constants::get_resource_account_address()).table, memo);

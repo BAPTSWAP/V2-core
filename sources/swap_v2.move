@@ -135,7 +135,7 @@ module baptswap_v2::swap_v2 {
         amount_y_out: u64
     }
 
-    // TODO: related to fee_on_transfer?
+    // TODO: related to fee_on_transfer
     struct FeeChangeEvent<phantom X, phantom Y> has drop, store {
         user: address,
         liquidity_fee: u128,
@@ -244,7 +244,7 @@ module baptswap_v2::swap_v2 {
         // if cointype = x
         if (type_info::type_of<CoinType>() == type_info::type_of<X>()) {
             // if activate = true
-            if (activate == true) {
+            if (activate) {
                 metadata.team_fee = metadata.team_fee + fee_on_transfer::get_team_fee<CoinType>();
             // if activate = false
             } else {
@@ -253,7 +253,7 @@ module baptswap_v2::swap_v2 {
         // if cointype = y
         } else if (type_info::type_of<CoinType>() == type_info::type_of<Y>()) {
             // if activate = true
-            if (activate == true) {
+            if (activate) {
                 metadata.team_fee = metadata.team_fee + fee_on_transfer::get_team_fee<CoinType>();
             // if activate = false
             } else {
@@ -281,7 +281,7 @@ module baptswap_v2::swap_v2 {
         // if cointype = x
         if (type_info::type_of<CoinType>() == type_info::type_of<X>()) {
             // if activate = true
-            if (activate == true) {
+            if (activate) {
                 metadata.rewards_fee = metadata.rewards_fee + fee_on_transfer::get_rewards_fee<CoinType>();
             // if activate = false
             } else {
@@ -290,7 +290,7 @@ module baptswap_v2::swap_v2 {
         // if cointype = y
         } else if (type_info::type_of<CoinType>() == type_info::type_of<Y>()) {
             // if activate = true
-            if (activate == true) {
+            if (activate) {
                 metadata.rewards_fee = metadata.rewards_fee + fee_on_transfer::get_rewards_fee<CoinType>();
             // if activate = false
             } else {
@@ -426,8 +426,7 @@ module baptswap_v2::swap_v2 {
             PairEventHolder {
                 add_liquidity: account::new_event_handle<AddLiquidityEvent<X, Y>>(&resource_signer),
                 remove_liquidity: account::new_event_handle<RemoveLiquidityEvent<X, Y>>(&resource_signer),
-                swap: account::new_event_handle<SwapEvent<X, Y>>(&resource_signer),
-                change_fee: account::new_event_handle<FeeChangeEvent<X,Y>>(&resource_signer)
+                swap: account::new_event_handle<SwapEvent<X, Y>>(&resource_signer)
             }
         );
 
@@ -474,7 +473,7 @@ module baptswap_v2::swap_v2 {
         }
     }
 
-    // Swap X to Y, X is in and Y is out. This method assumes amount_out_min is 0
+    /// Swap X to Y, X is in and Y is out. This method assumes amount_out_min is 0
     public(friend) fun swap_exact_x_to_y<X, Y>(
         sender: &signer,
         amount_in: u64,
@@ -489,31 +488,22 @@ module baptswap_v2::swap_v2 {
         amount_out
     }
 
-    // Swap X to Y, X is in and Y is out. This method assumes amount_out_min is 0
+    /// Swap X to Y, X is in and Y is out. This method assumes amount_out_min is 0
     public(friend) fun swap_exact_x_to_y_direct<X, Y>(
-        coins_in: Coin<X>
-    ): (Coin<X>, Coin<Y>) acquires TokenPairReserve, TokenPairMetadata {
-        // Grab token pair metadata
-        let metadata = borrow_global_mut<TokenPairMetadata<X, Y>>(constants::get_resource_account_address()); 
-        // get the value of coins in u64
+        coins_in: coin::Coin<X>
+    ): (coin::Coin<X>, coin::Coin<Y>) acquires TokenPairReserve, TokenPairMetadata {
         let amount_in = coin::value<X>(&coins_in);
-
-        // deposit amount_in x into balance x
-        coin::merge(&mut metadata.balance_x, coins_in);
-
-        // get amount_out y given amount_in x, reserves of x and y, and total_fees from x
+        deposit_x<X, Y>(coins_in);
         let (rin, rout, _) = token_reserves<X, Y>();
         let total_fees = token_fees<X, Y>();
-
-        // Get amount after deducting fees and swap it to y
         let amount_out = swap_utils::get_amount_out(amount_in, rin, rout, total_fees);
         let (coins_x_out, coins_y_out) = swap<X, Y>(0, amount_out);
-
-        // distribute DEX fees and update reserves
+        // distribute fees 
         distribute_dex_fees<X, Y>(amount_in);
-        // distrubute fees and update reserves
-        distribute_fee_on_transfer_fees<X, Y>(amount_in);
-
+        distribute_fee_on_transfer_fees<Y, X, Y>(amount_out);
+        distribute_fee_on_transfer_fees<X, X, Y>(amount_in);
+        // update reserves
+        update_reserves<X, Y>();
         assert!(coin::value<X>(&coins_x_out) == 0, errors::insufficient_output_amount());
         (coins_x_out, coins_y_out)
     }
@@ -533,35 +523,22 @@ module baptswap_v2::swap_v2 {
     }
 
     public(friend) fun swap_x_to_exact_y_direct<X, Y>(
-        coins_in: Coin<X>,
-        amount_out: u64
-    ): (Coin<X>, Coin<Y>) acquires TokenPairReserve, TokenPairMetadata {
-        // Grab token pair metadata
-        let metadata = borrow_global_mut<TokenPairMetadata<X, Y>>(constants::get_resource_account_address()); 
-        // get the value of coins in in u64
+        coins_in: coin::Coin<X>, amount_out: u64
+    ): (coin::Coin<X>, coin::Coin<Y>) acquires TokenPairReserve, TokenPairMetadata {
         let amount_in = coin::value<X>(&coins_in);
-
-        // deposit amount_in x into balance x
-        coin::merge(&mut metadata.balance_x, coins_in);
-
-        // get amount_out y given amount_in x, reserves of x and y, and total_fees from x
-        let (rin, rout, _) = token_reserves<X, Y>();
-        let total_fees = token_fees<X, Y>();
-
-        // Get amount after deducting fees and swap it to y
-        let amount_out = swap_utils::get_amount_out(amount_in, rin, rout, total_fees);
+        deposit_x<X, Y>(coins_in);
         let (coins_x_out, coins_y_out) = swap<X, Y>(0, amount_out);
-
-        // distribute DEX fees and update reserves
+        // distribute fees 
         distribute_dex_fees<X, Y>(amount_in);
-        // distrubute fees and update reserves
-        distribute_fee_on_transfer_fees<X, Y>(amount_in);
-
+        distribute_fee_on_transfer_fees<Y, X, Y>(amount_out);
+        distribute_fee_on_transfer_fees<X, X, Y>(amount_in);
+        // update reserves
+        update_reserves<X, Y>();
         assert!(coin::value<X>(&coins_x_out) == 0, errors::insufficient_output_amount());
         (coins_x_out, coins_y_out)
     }
 
-    // Swap Y to X, Y is in and X is out. This method assumes amount_out_min is 0
+    /// Swap Y to X, Y is in and X is out. This method assumes amount_out_min is 0
     public(friend) fun swap_exact_y_to_x<X, Y>(
         sender: &signer,
         amount_in: u64,
@@ -591,59 +568,37 @@ module baptswap_v2::swap_v2 {
     }
 
     public(friend) fun swap_y_to_exact_x_direct<X, Y>(
-        coins_in: Coin<Y>,
-        amount_out: u64
-    ): (Coin<X>, Coin<Y>) acquires TokenPairReserve, TokenPairMetadata {
-        // Grab token pair metadata
-        let metadata = borrow_global_mut<TokenPairMetadata<X, Y>>(constants::get_resource_account_address()); 
-        // get the value of coins in in u64
+        coins_in: coin::Coin<Y>, amount_out: u64
+    ): (coin::Coin<X>, coin::Coin<Y>) acquires TokenPairReserve, TokenPairMetadata {
         let amount_in = coin::value<Y>(&coins_in);
-
-        // deposit amount_in y into balance y
-        coin::merge(&mut metadata.balance_y, coins_in);
-
-        // get amount_out x given amount_in y, reserves of x and y, and total_fees from y
-        let (rin, rout, _) = token_reserves<X, Y>();
-        let total_fees = token_fees<X, Y>();
-
-        // Get amount after deducting fees and swap it to x
-        let amount_out = swap_utils::get_amount_out(amount_in, rin, rout, total_fees);
+        deposit_y<X, Y>(coins_in);
         let (coins_x_out, coins_y_out) = swap<X, Y>(amount_out, 0);
-
-        // distribute DEX fees and update reserves
+        // distribute fees 
         distribute_dex_fees<X, Y>(amount_in);
-        // distrubute fees and update reserves
-        distribute_fee_on_transfer_fees<X, Y>(amount_in);
-
-        assert!(coin::value<Y>(&coins_y_out) == amount_out, errors::insufficient_output_amount());
+        distribute_fee_on_transfer_fees<Y, X, Y>(amount_out);
+        distribute_fee_on_transfer_fees<X, X, Y>(amount_in);
+        // update reserves
+        update_reserves<X, Y>();
+        assert!(coin::value<Y>(&coins_y_out) == 0, errors::insufficient_output_amount());
         (coins_x_out, coins_y_out)
     }
 
-    // Swap Y to X, Y is in and X is out. This method assumes amount_out_min is 0
+    /// Swap Y to X, Y is in and X is out. This method assumes amount_out_min is 0
     public(friend) fun swap_exact_y_to_x_direct<X, Y>(
-        coins_in: Coin<Y>
-    ): (Coin<X>, Coin<Y>) acquires TokenPairReserve, TokenPairMetadata {
-        // Grab token pair metadata
-        let metadata = borrow_global_mut<TokenPairMetadata<X, Y>>(constants::get_resource_account_address()); 
-        // get the value of coins in in u64
+        coins_in: coin::Coin<Y>
+    ): (coin::Coin<X>, coin::Coin<Y>) acquires TokenPairReserve, TokenPairMetadata {
         let amount_in = coin::value<Y>(&coins_in);
-
-        // deposit amount_in y into balance y
-        coin::merge(&mut metadata.balance_y, coins_in);
-
-        // get amount_out x given amount_in y, reserves of x and y, and total_fees from y
-        let (rin, rout, _) = token_reserves<X, Y>();
+        deposit_y<X, Y>(coins_in);
+        let (rout, rin, _) = token_reserves<X, Y>();
         let total_fees = token_fees<X, Y>();
-
-        // Get amount after deducting fees and swap it to x
         let amount_out = swap_utils::get_amount_out(amount_in, rin, rout, total_fees);
         let (coins_x_out, coins_y_out) = swap<X, Y>(amount_out, 0);
-
-        // distribute DEX fees and update reserves
+        // distribute fees 
         distribute_dex_fees<X, Y>(amount_in);
-        // distrubute fees and update reserves
-        distribute_fee_on_transfer_fees<X, Y>(amount_in);
-
+        distribute_fee_on_transfer_fees<Y, X, Y>(amount_out);
+        distribute_fee_on_transfer_fees<X, X, Y>(amount_in);
+        // update reserves
+        update_reserves<X, Y>();
         assert!(coin::value<Y>(&coins_y_out) == 0, errors::insufficient_output_amount());
         (coins_x_out, coins_y_out)
     }
@@ -787,8 +742,8 @@ module baptswap_v2::swap_v2 {
         burn<X, Y>(liquidity)
     }
 
-    // used in swap functions to distribute DEX fees and update reserves correspondingly
-    fun distribute_dex_fees<X, Y>(amount_in: u64) acquires TokenPairReserve, TokenPairMetadata {
+    // used in swap functions to distribute DEX fees
+    fun distribute_dex_fees<X, Y>(amount_in: u64) acquires TokenPairMetadata {
         // distribute DEX fees to dex owner;
         let (amount_to_liquidity, amount_to_treasury) = calculate_dex_fees_amounts<Y>(amount_in);
         let metadata = borrow_global_mut<TokenPairMetadata<X, Y>>(constants::get_resource_account_address());
@@ -798,29 +753,18 @@ module baptswap_v2::swap_v2 {
         // treasury 
         let treasury_fee_coins = coin::extract<Y>(&mut metadata.balance_y, (amount_to_treasury as u64));
         coin::deposit<Y>(admin::get_treasury_address(), treasury_fee_coins);
-        // update reserves
-        update_reserves<X, Y>();
     }
 
-    fun update_reserves<X, Y>() acquires TokenPairReserve, TokenPairMetadata {
-        let reserves = borrow_global_mut<TokenPairReserve<X, Y>>(constants::get_resource_account_address());
-        let (balance_x, balance_y) = token_balances<X, Y>();
-        update(balance_x, balance_y, reserves);
-    }
-
-    // used in swap functions to distribute fees and update reserves correspondingly
-    // TODO: when extracting fees, we need to check if the token if fee is not zero (follow the same logic as in rewards_fees)
-    // TODO: code duplication spotted, can be improved
-    fun distribute_fee_on_transfer_fees<X, Y>(
-        amount_in: u64
-    ) acquires TokenPairReserve, TokenPairMetadata {
+    // used in swap functions to distribute fee_on_transfer fees
+    // if x, fees are taken from amount_in. If y, fees are taken from amount_out
+    fun distribute_fee_on_transfer_fees<CoinType, X, Y>(amount: u64) acquires TokenPairMetadata {
         let metadata = borrow_global_mut<TokenPairMetadata<X, Y>>(constants::get_resource_account_address());
         let fee_on_transfer_x = metadata.fee_on_transfer_x;
         let fee_on_transfer_y = metadata.fee_on_transfer_y;
-        // if token info x is registered & token info y is not, calculate only token info x fees
-        if (!option::is_none<FeeOnTransferInfo<X>>(&fee_on_transfer_x) && option::is_none<FeeOnTransferInfo<Y>>(&fee_on_transfer_y)) {
+        // if token_info cointype is x and is registered; distribute fees
+        if (type_info::type_of<CoinType>() == type_info::type_of<X>() && !option::is_none<FeeOnTransferInfo<X>>(&fee_on_transfer_x)) {
             // calculate the fees 
-            let (amount_to_liquidity, amount_to_rewards, amount_to_team) = calculate_fee_on_transfer_amounts<X>(amount_in);
+            let (amount_to_liquidity, amount_to_rewards, amount_to_team) = calculate_fee_on_transfer_amounts<X>(amount);
             // extract fees
             let liquidity_fee_coins = coin::extract<X>(&mut metadata.balance_x, (amount_to_liquidity as u64));
             let team_coins = coin::extract<X>(&mut metadata.balance_x, (amount_to_team as u64));
@@ -833,13 +777,11 @@ module baptswap_v2::swap_v2 {
                 stake::distribute_rewards<X, Y>(rewards_coins, coin::zero<Y>());
             };
             coin::merge(&mut metadata.team_balance_x, team_coins);
-            // update reserves
-            update_reserves<X, Y>();
         }
-        // if token info y is registered & token info x not, calculate only token info y fees
-        else if (option::is_none<FeeOnTransferInfo<X>>(&fee_on_transfer_x) && !option::is_none<FeeOnTransferInfo<Y>>(&fee_on_transfer_y)) {
+        // if token_info cointype is y and is registered, distribute fees
+        else if (type_info::type_of<CoinType>() == type_info::type_of<Y>() && !option::is_none<FeeOnTransferInfo<Y>>(&fee_on_transfer_y)) {
             // calculate the fees 
-            let (amount_to_liquidity, amount_to_rewards, amount_to_team) = calculate_fee_on_transfer_amounts<Y>(amount_in);
+            let (amount_to_liquidity, amount_to_rewards, amount_to_team) = calculate_fee_on_transfer_amounts<Y>(amount);
             
             // extract fees
             let liquidity_fee_coins = coin::extract<Y>(&mut metadata.balance_y, (amount_to_liquidity as u64));
@@ -854,35 +796,81 @@ module baptswap_v2::swap_v2 {
                 stake::distribute_rewards<X, Y>(coin::zero<X>(), rewards_coins);
             };
             coin::merge(&mut metadata.team_balance_y, team_coins);
-            // update reserves
-            update_reserves<X, Y>();
         }
-        // if token info x and token info y are both registered
-        else if (!option::is_none<FeeOnTransferInfo<X>>(&fee_on_transfer_x) && !option::is_none<FeeOnTransferInfo<Y>>(&fee_on_transfer_y)) {
-            // calculate the fees
-            let (amount_to_liquidity_x, amount_to_rewards_x, amount_to_team_x) = calculate_fee_on_transfer_amounts<X>(amount_in);
-            let (amount_to_liquidity_y, amount_to_rewards_y, amount_to_team_y) = calculate_fee_on_transfer_amounts<Y>(amount_in);
+    }
 
-            // extract fees
-            let liquidity_fee_coins_x = coin::extract<X>(&mut metadata.balance_x, (amount_to_liquidity_x as u64));
-            let team_coins_x = coin::extract<X>(&mut metadata.balance_x, (amount_to_team_x as u64));
-            let liquidity_fee_coins_y = coin::extract<Y>(&mut metadata.balance_y, (amount_to_liquidity_y as u64));
-            let team_coins_y = coin::extract<Y>(&mut metadata.balance_y, (amount_to_team_y as u64));
+    // fun distribute_fee_on_transfer_fees<X, Y>(
+    //     amount_in: u64
+    // ) acquires TokenPairMetadata {
+    //     let metadata = borrow_global_mut<TokenPairMetadata<X, Y>>(constants::get_resource_account_address());
+    //     let fee_on_transfer_x = metadata.fee_on_transfer_x;
+    //     let fee_on_transfer_y = metadata.fee_on_transfer_y;
+    //     // if token info x is registered & token info y is not, calculate only token info x fees
+    //     if (!option::is_none<FeeOnTransferInfo<X>>(&fee_on_transfer_x) && option::is_none<FeeOnTransferInfo<Y>>(&fee_on_transfer_y)) {
+    //         // calculate the fees 
+    //         let (amount_to_liquidity, amount_to_rewards, amount_to_team) = calculate_fee_on_transfer_amounts<X>(amount_in);
+    //         // extract fees
+    //         let liquidity_fee_coins = coin::extract<X>(&mut metadata.balance_x, (amount_to_liquidity as u64));
+    //         let team_coins = coin::extract<X>(&mut metadata.balance_x, (amount_to_team as u64));
+            
+    //         // distribute fees
+    //         coin::merge(&mut metadata.balance_x, liquidity_fee_coins); 
+    //         // rewards fees must go to rewards pool
+    //         if (metadata.rewards_fee > 0) {
+    //             let rewards_coins = coin::extract<X>(&mut metadata.balance_x, (amount_to_rewards as u64));
+    //             stake::distribute_rewards<X, Y>(rewards_coins, coin::zero<Y>());
+    //         };
+    //         coin::merge(&mut metadata.team_balance_x, team_coins);
+    //     }
+    //     // if token info y is registered & token info x not, calculate only token info y fees
+    //     else if (option::is_none<FeeOnTransferInfo<X>>(&fee_on_transfer_x) && !option::is_none<FeeOnTransferInfo<Y>>(&fee_on_transfer_y)) {
+    //         // calculate the fees 
+    //         let (amount_to_liquidity, amount_to_rewards, amount_to_team) = calculate_fee_on_transfer_amounts<Y>(amount_in);
+            
+    //         // extract fees
+    //         let liquidity_fee_coins = coin::extract<Y>(&mut metadata.balance_y, (amount_to_liquidity as u64));
+    //         // let rewards_coins = coin::extract<Y>(&mut metadata.balance_y, (amount_to_rewards as u64));
+    //         let team_coins = coin::extract<Y>(&mut metadata.balance_y, (amount_to_team as u64));
+            
+    //         // distribute fees
+    //         coin::merge(&mut metadata.balance_y, liquidity_fee_coins);
+    //         // rewards fees must go to rewards pool
+    //         if (metadata.rewards_fee > 0) {
+    //             let rewards_coins = coin::extract<Y>(&mut metadata.balance_y, (amount_to_rewards as u64));
+    //             stake::distribute_rewards<X, Y>(coin::zero<X>(), rewards_coins);
+    //         };
+    //         coin::merge(&mut metadata.team_balance_y, team_coins);
+    //     }
+    //     // if token info x and token info y are both registered
+    //     else if (!option::is_none<FeeOnTransferInfo<X>>(&fee_on_transfer_x) && !option::is_none<FeeOnTransferInfo<Y>>(&fee_on_transfer_y)) {
+    //         // calculate the fees
+    //         let (amount_to_liquidity_x, amount_to_rewards_x, amount_to_team_x) = calculate_fee_on_transfer_amounts<X>(amount_in);
+    //         let (amount_to_liquidity_y, amount_to_rewards_y, amount_to_team_y) = calculate_fee_on_transfer_amounts<Y>(amount_in);
 
-            // distribute fees
-            coin::merge(&mut metadata.balance_x, liquidity_fee_coins_x);
-            coin::merge(&mut metadata.balance_y, liquidity_fee_coins_y);
-            // rewards fees must go to rewards pool
-            if (metadata.rewards_fee > 0) {
-                let rewards_coins_x = coin::extract<X>(&mut metadata.balance_x, (amount_to_rewards_x as u64));
-                let rewards_coins_y = coin::extract<Y>(&mut metadata.balance_y, (amount_to_rewards_y as u64));
-                stake::distribute_rewards<X, Y>(rewards_coins_x, rewards_coins_y);
-            };
-            coin::merge(&mut metadata.team_balance_x, team_coins_x);
-            coin::merge(&mut metadata.team_balance_y, team_coins_y);
-            // update reserves
-            update_reserves<X, Y>();
-        } 
+    //         // extract fees
+    //         let liquidity_fee_coins_x = coin::extract<X>(&mut metadata.balance_x, (amount_to_liquidity_x as u64));
+    //         let team_coins_x = coin::extract<X>(&mut metadata.balance_x, (amount_to_team_x as u64));
+    //         let liquidity_fee_coins_y = coin::extract<Y>(&mut metadata.balance_y, (amount_to_liquidity_y as u64));
+    //         let team_coins_y = coin::extract<Y>(&mut metadata.balance_y, (amount_to_team_y as u64));
+
+    //         // distribute fees
+    //         coin::merge(&mut metadata.balance_x, liquidity_fee_coins_x);
+    //         coin::merge(&mut metadata.balance_y, liquidity_fee_coins_y);
+    //         // rewards fees must go to rewards pool
+    //         if (metadata.rewards_fee > 0) {
+    //             let rewards_coins_x = coin::extract<X>(&mut metadata.balance_x, (amount_to_rewards_x as u64));
+    //             let rewards_coins_y = coin::extract<Y>(&mut metadata.balance_y, (amount_to_rewards_y as u64));
+    //             stake::distribute_rewards<X, Y>(rewards_coins_x, rewards_coins_y);
+    //         };
+    //         coin::merge(&mut metadata.team_balance_x, team_coins_x);
+    //         coin::merge(&mut metadata.team_balance_y, team_coins_y);
+    //     } 
+    // }
+
+    fun update_reserves<X, Y>() acquires TokenPairReserve, TokenPairMetadata {
+        let reserves = borrow_global_mut<TokenPairReserve<X, Y>>(constants::get_resource_account_address());
+        let (balance_x, balance_y) = token_balances<X, Y>();
+        update(balance_x, balance_y, reserves);
     }
 
     // Swap
@@ -936,7 +924,7 @@ module baptswap_v2::swap_v2 {
         };
         assert!(compare_result, errors::k());
 
-        update(balance_x, balance_y, reserves);
+        // update(balance_x, balance_y, reserves);
 
         (coins_x_out, coins_y_out)
     }
