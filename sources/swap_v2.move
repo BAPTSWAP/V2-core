@@ -14,9 +14,7 @@
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
     TODO: 
-        - function to check if the CoinType is registered in a pair <X, Y>
-        - function to return token info of a given coinType
-        - make token_fees returns a tuple
+        - functions to withdraw team fees by the owners; must be internal func and will be used in the router
 */
 
 module baptswap_v2::swap_v2 {
@@ -78,9 +76,9 @@ module baptswap_v2::swap_v2 {
         // T1 token balance
         balance_y: Coin<Y>,
         // T0 team balance
-        team_balance_x: Coin<X>,    // this should go to team y
+        team_balance_x: Coin<X>,
         // T1 team balance
-        team_balance_y: Coin<Y>,    // this should go to team x
+        team_balance_y: Coin<Y>, 
         // Mint capacity of LP Token
         mint_cap: coin::MintCapability<LPToken<X, Y>>,
         // Burn capacity of LP Token
@@ -216,7 +214,7 @@ module baptswap_v2::swap_v2 {
         activate: bool
     ) acquires TokenPairMetadata {
         // assert cointype is either X or Y
-        assert!(type_info::type_of<CoinType>() == type_info::type_of<X>() || type_info::type_of<CoinType>() == type_info::type_of<Y>(), 1);
+        assert!(type_info::type_of<CoinType>() == type_info::type_of<X>() || type_info::type_of<CoinType>() == type_info::type_of<Y>(), errors::coin_type_does_not_match_x_or_y());
         // assert sender is token owner
         assert!(deployer::is_coin_owner<CoinType>(sender), errors::not_owner());
         // TODO: assert FeeOnTransferInfo<CoinType> is registered in the pair
@@ -426,7 +424,8 @@ module baptswap_v2::swap_v2 {
             PairEventHolder {
                 add_liquidity: account::new_event_handle<AddLiquidityEvent<X, Y>>(&resource_signer),
                 remove_liquidity: account::new_event_handle<RemoveLiquidityEvent<X, Y>>(&resource_signer),
-                swap: account::new_event_handle<SwapEvent<X, Y>>(&resource_signer)
+                swap: account::new_event_handle<SwapEvent<X, Y>>(&resource_signer),
+                change_fee: account::new_event_handle<FeeChangeEvent<X, Y>>(&resource_signer)
             }
         );
 
@@ -591,7 +590,7 @@ module baptswap_v2::swap_v2 {
         deposit_y<X, Y>(coins_in);
         let (rout, rin, _) = token_reserves<X, Y>();
         let total_fees = token_fees<X, Y>();
-        let amount_out = swap_utils::get_amount_out(amount_in, rin, rout, total_fees);
+        let amount_out = swap_utils::get_amount_out(amount_in, rin, rout, total_fees);  // TODO: minus the fees that will be paid in the other token
         let (coins_x_out, coins_y_out) = swap<X, Y>(amount_out, 0);
         // distribute fees 
         distribute_dex_fees<X, Y>(amount_in);
@@ -652,9 +651,18 @@ module baptswap_v2::swap_v2 {
         )
     }
 
-    // ---------
-    // Accessors
-    // ---------
+    #[view]
+    // get team fee in a given pair
+    public fun get_accumulated_team_fee<CoinType, X, Y>(): u64 acquires TokenPairMetadata {
+        let team_accumulated_fee = 0;
+        let metadata = borrow_global<TokenPairMetadata<X, Y>>(constants::get_resource_account_address());
+        if (type_info::type_of<CoinType>() == type_info::type_of<X>()) {
+            team_accumulated_fee = coin::value(&metadata.team_balance_x);
+        } else {
+            team_accumulated_fee = coin::value(&metadata.team_balance_y);
+        };
+        team_accumulated_fee
+    }
 
     // Obtain the LP token balance of `addr`.
     // This method can only be used to check other users' balance.
@@ -770,7 +778,7 @@ module baptswap_v2::swap_v2 {
             let team_coins = coin::extract<X>(&mut metadata.balance_x, (amount_to_team as u64));
             
             // distribute fees
-            coin::merge(&mut metadata.balance_x, liquidity_fee_coins); 
+            coin::merge(&mut metadata.balance_x, liquidity_fee_coins);
             // rewards fees must go to rewards pool
             if (metadata.rewards_fee > 0) {
                 let rewards_coins = coin::extract<X>(&mut metadata.balance_x, (amount_to_rewards as u64));
@@ -782,7 +790,6 @@ module baptswap_v2::swap_v2 {
         else if (type_info::type_of<CoinType>() == type_info::type_of<Y>() && !option::is_none<FeeOnTransferInfo<Y>>(&fee_on_transfer_y)) {
             // calculate the fees 
             let (amount_to_liquidity, amount_to_rewards, amount_to_team) = calculate_fee_on_transfer_amounts<Y>(amount);
-            
             // extract fees
             let liquidity_fee_coins = coin::extract<Y>(&mut metadata.balance_y, (amount_to_liquidity as u64));
             // let rewards_coins = coin::extract<Y>(&mut metadata.balance_y, (amount_to_rewards as u64));
@@ -1038,5 +1045,18 @@ module baptswap_v2::swap_v2 {
     fun extract_y<X, Y>(amount: u64, metadata: &mut TokenPairMetadata<X, Y>): Coin<Y> {
         assert!(coin::value<Y>(&metadata.balance_y) > amount, errors::insufficient_amount());
         coin::extract(&mut metadata.balance_y, amount)
+    }
+
+    // Extract team fee
+    public(friend) fun extract_team_fee_x<X, Y>(amount: u64): Coin<X> acquires TokenPairMetadata {
+        let metadata = borrow_global_mut<TokenPairMetadata<X, Y>>(constants::get_resource_account_address());
+        assert!(coin::value<X>(&metadata.team_balance_x) > amount, errors::insufficient_amount());
+        coin::extract(&mut metadata.team_balance_x, amount)
+    }
+
+    public(friend) fun extract_team_fee_y<X, Y>(amount: u64): Coin<Y> acquires TokenPairMetadata {
+        let metadata = borrow_global_mut<TokenPairMetadata<X, Y>>(constants::get_resource_account_address());
+        assert!(coin::value<Y>(&metadata.team_balance_y) > amount, errors::insufficient_amount());
+        coin::extract(&mut metadata.team_balance_y, amount)
     }
 }

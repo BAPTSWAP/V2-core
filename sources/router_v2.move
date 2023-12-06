@@ -1,12 +1,18 @@
 module baptswap_v2::router_v2 {
+
     use aptos_framework::aptos_coin::{AptosCoin as APT};
     use aptos_framework::coin;
 
+    use aptos_std::type_info;
+
     use baptswap::swap_utils;
 
+    use baptswap_v2::fee_on_transfer;
     use baptswap_v2::errors;
     use baptswap_v2::stake;
     use baptswap_v2::swap_v2;
+
+    use bapt_framework::deployer;
 
     use std::signer;
 
@@ -59,7 +65,6 @@ module baptswap_v2::router_v2 {
         }
     }
 
-
     public entry fun unstake_tokens_from_pool<X, Y>(
         sender: &signer,
         amount: u64
@@ -84,6 +89,37 @@ module baptswap_v2::router_v2 {
             stake::claim_rewards<X, Y>(sender);
         } else {
             stake::claim_rewards<Y, X>(sender);
+        }
+    }
+
+    // claim team fees in a given pair; claimed by the counterpart token callable by token owners.
+    // Fails if the accumualted fees are zero
+    public entry fun claim_accumulated_team_fee<CoinType, X, Y>(sender: &signer) {
+        assert_pair_is_created<X, Y>();
+        assert!(type_info::type_of<CoinType>() == type_info::type_of<X>() || type_info::type_of<CoinType>() == type_info::type_of<Y>(), errors::coin_type_does_not_match_x_or_y());
+        // based on type
+        if (type_info::type_of<CoinType>() == type_info::type_of<X>()) {
+            // assert the signer is the token owner
+            assert!(deployer::is_coin_owner<X>(sender), errors::not_owner());
+            // assert accumulated fees are not zero 
+            let team_balance_x = swap_v2::get_accumulated_team_fee<X, X, Y>();
+            assert!(team_balance_x > 0, errors::insufficient_amount());
+            // withdraw accumulated fees, and send it to the signer address
+            let team_fee_coins = swap_v2::extract_team_fee_x<X, Y>(team_balance_x);
+            coin::deposit<X>(fee_on_transfer::get_owner<X>(), team_fee_coins);
+            // swap it to Y
+            swap_exact_input<X, Y>(sender, team_balance_x, 0);
+        } else {
+            // assert the signer is the token owner
+            assert!(deployer::is_coin_owner<Y>(sender), errors::not_owner());
+            // assert accumulated fees are not zero
+            let team_balance_y = swap_v2::get_accumulated_team_fee<Y, X, Y>();
+            assert!(team_balance_y > 0, errors::insufficient_amount());
+            // withdraw accumulated fees, and send it to the signer address
+            let team_fee_coins = swap_v2::extract_team_fee_y<X, Y>(team_balance_y);
+            coin::deposit<Y>(fee_on_transfer::get_owner<Y>(), team_fee_coins);
+            // swap it to X
+            swap_exact_input<Y, X>(sender, team_balance_y, 0);
         }
     }
 
@@ -189,7 +225,7 @@ module baptswap_v2::router_v2 {
         y_out
     }
 
-        // multi-hop
+    // multi-hop
     // swap X for Y while pair<X, Y> doesn't exist, intermidiate token is Z
     
     public fun multi_hop_exact_input<X, Y, Z>(sender: &signer, x_in: u64, y_min_out: u64) {

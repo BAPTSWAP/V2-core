@@ -144,6 +144,12 @@ module baptswap_v2::fee_on_transfer {
     // --------------
 
     #[view]
+    public fun get_owner<CoinType>(): address acquires FeeOnTransferInfo {
+        let fee_on_transfer = borrow_global<FeeOnTransferInfo<CoinType>>(constants::get_resource_account_address());
+        fee_on_transfer.owner
+    }
+
+    #[view]
     public fun get_liquidity_fee<CoinType>(): u128  acquires FeeOnTransferInfo {
         let fee_on_transfer = borrow_global<FeeOnTransferInfo<CoinType>>(constants::get_resource_account_address());
         fee_on_transfer.liquidity_fee_modifier
@@ -162,8 +168,8 @@ module baptswap_v2::fee_on_transfer {
     }
 
     #[view]
-    // Returns the total fee on transfer for a given token
-    public fun get_total_fee_on_transfer<CoinType>(): u128 acquires FeeOnTransferInfo {
+    // Returns the total fee on transfer fees for a given token
+    public fun get_all_fee_on_transfer<CoinType>(): u128 acquires FeeOnTransferInfo {
         let fee_on_transfer = borrow_global<FeeOnTransferInfo<CoinType>>(constants::get_resource_account_address());
         fee_on_transfer.liquidity_fee_modifier + fee_on_transfer.rewards_fee_modifier + fee_on_transfer.team_fee_modifier
     }
