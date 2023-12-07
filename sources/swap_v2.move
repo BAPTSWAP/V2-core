@@ -504,7 +504,7 @@ module baptswap_v2::swap_v2 {
         let (coins_x_out, coins_y_out) = swap<X, Y>(0, amount_out);
         // distribute fees 
         distribute_dex_fees<Y, X, Y>(amount_out);
-        distribute_fee_on_transfer_fees<X, X, Y>(amount_in);
+        // distribute_fee_on_transfer_fees<X, X, Y>(amount_in);
         distribute_fee_on_transfer_fees<Y, X, Y>(amount_out);
         // update reserves
         update_reserves<X, Y>();
@@ -534,7 +534,7 @@ module baptswap_v2::swap_v2 {
         let (coins_x_out, coins_y_out) = swap<X, Y>(0, amount_out);
         // distribute fees 
         distribute_dex_fees<Y, X, Y>(amount_out);
-        distribute_fee_on_transfer_fees<X, X, Y>(amount_in);
+        // distribute_fee_on_transfer_fees<X, X, Y>(amount_in);
         distribute_fee_on_transfer_fees<Y, X, Y>(amount_out);
         // update reserves
         update_reserves<X, Y>();
@@ -580,7 +580,7 @@ module baptswap_v2::swap_v2 {
         // distribute fees 
         distribute_dex_fees<X, X, Y>(amount_out);
         distribute_fee_on_transfer_fees<X, X, Y>(amount_out);
-        distribute_fee_on_transfer_fees<Y, X, Y>(amount_in);
+        // distribute_fee_on_transfer_fees<Y, X, Y>(amount_in);
         // update reserves
         update_reserves<X, Y>();
         assert!(coin::value<Y>(&coins_y_out) == 0, errors::insufficient_output_amount());
@@ -600,7 +600,7 @@ module baptswap_v2::swap_v2 {
         // distribute fees 
         distribute_dex_fees<X, X, Y>(amount_out);
         distribute_fee_on_transfer_fees<X, X, Y>(amount_out);
-        distribute_fee_on_transfer_fees<Y, X, Y>(amount_in);
+        // distribute_fee_on_transfer_fees<Y, X, Y>(amount_in);
         // update reserves
         update_reserves<X, Y>();
         assert!(coin::value<Y>(&coins_y_out) == 0, errors::insufficient_output_amount());
