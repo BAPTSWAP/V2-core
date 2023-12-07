@@ -6,10 +6,10 @@ module baptswap_v2::stake {
 
     use std::signer;
 
-    use aptos_framework::coin;
-
     // use aptos_std::debug;
-    use aptos_std::math128;
+    use aptos_std::type_info;
+
+    use aptos_framework::coin;
 
     use baptswap::math;
     use baptswap::u256;
@@ -45,37 +45,61 @@ module baptswap_v2::stake {
     }
 
     // Initialize rewards pool in a token pair
-    public(friend) fun init_rewards_pool<X, Y>(
+    public(friend) fun create_pool<CoinType, X, Y>(
         sender: &signer,
         is_x_staked: bool
     ) {
-        assert!(!exists<TokenPairRewardsPool<X, Y>>(constants::get_resource_account_address()), errors::already_initialized());
-        // Assert initializer is the owner of either X or Y
-        assert!(deployer::is_coin_owner<X>(sender) || deployer::is_coin_owner<Y>(sender), errors::not_owner());
-        // Assert either of the fee_on_transfer is intialized 
-        assert!(fee_on_transfer::is_created<X>() || fee_on_transfer::is_created<Y>(), errors::fee_on_transfer_not_initialized());
-        
-        // Create the pool resource
+        // TODO assert coin type is either X or Y
         let resource_signer = admin::get_resource_signer();
-
         let precision_factor = math::pow(10u128, 12u8);
-
-        move_to<TokenPairRewardsPool<X, Y>>(
-            &resource_signer,
-            TokenPairRewardsPool {
-                staked_tokens: 0,
-                balance_x: coin::zero<X>(),
-                balance_y: coin::zero<Y>(),
-                magnified_dividends_per_share_x: 0,
-                magnified_dividends_per_share_y: 0,
-                precision_factor,
-                is_x_staked
-            }
-        );
+        // based on CoinType
+        if (type_info::type_of<CoinType>() == type_info::type_of<X>()) {
+            assert!(!exists<TokenPairRewardsPool<X, Y>>(constants::get_resource_account_address()), errors::already_initialized());
+            // Assert initializer is the owner of either X or Y
+            assert!(deployer::is_coin_owner<X>(sender), errors::not_owner());
+            // Assert either of the fee_on_transfer is intialized 
+            // TODO: and != 0?
+            assert!(fee_on_transfer::is_created<X>(), errors::fee_on_transfer_not_initialized());
+            // Create the pool resource
+            let resource_signer = admin::get_resource_signer();
+            let precision_factor = math::pow(10u128, 12u8);
+            move_to<TokenPairRewardsPool<X, Y>>(
+                &resource_signer,
+                TokenPairRewardsPool {
+                    staked_tokens: 0,
+                    balance_x: coin::zero<X>(),
+                    balance_y: coin::zero<Y>(),
+                    magnified_dividends_per_share_x: 0,
+                    magnified_dividends_per_share_y: 0,
+                    precision_factor,
+                    is_x_staked
+                }
+            );
+        } else {
+            assert!(!exists<TokenPairRewardsPool<Y, X>>(constants::get_resource_account_address()), errors::already_initialized());
+            // Assert initializer is the owner of either X or Y
+            assert!(deployer::is_coin_owner<Y>(sender), errors::not_owner());
+            // Assert either of the fee_on_transfer is intialized
+            assert!(fee_on_transfer::is_created<Y>(), errors::fee_on_transfer_not_initialized());
+            // Create the pool resource
+            move_to<TokenPairRewardsPool<Y, X>>(
+                &resource_signer,
+                TokenPairRewardsPool {
+                    staked_tokens: 0,
+                    balance_x: coin::zero<Y>(),
+                    balance_y: coin::zero<X>(),
+                    magnified_dividends_per_share_x: 0,
+                    magnified_dividends_per_share_y: 0,
+                    precision_factor,
+                    is_x_staked
+                }
+            );
+        }
+        
     }
 
     // stake tokens in a token pair given an amount and a token pair
-    public(friend) fun stake_tokens<X, Y>(
+    public(friend) fun deposit<X, Y>(
         sender: &signer,
         amount: u64
     ) acquires TokenPairRewardsPool, RewardsPoolUserInfo {
@@ -172,7 +196,7 @@ module baptswap_v2::stake {
     }
 
     // unstake tokens pair
-    public(friend) entry fun unstake_tokens<X, Y>(
+    public entry fun withdraw<X, Y>(
         sender: &signer,
         amount: u64
     ) acquires TokenPairRewardsPool, RewardsPoolUserInfo {
@@ -377,25 +401,6 @@ module baptswap_v2::stake {
         } else {
             y_token_per_share_u256 = u256::from_u128(last_magnified_dividends_per_share_y);
         };
-
-        // calculate total residual coins: 
-        let x_token_expected_rewards = u256::as_u128(
-            (
-                u256::div(
-                    u256::mul(x_token_per_share_u256, u256::from_u64(total_staked_token)),
-                    u256::from_u128(precision_factor)
-                )
-            )
-        );
-
-        let y_token_expected_rewards = u256::as_u128(
-            (
-                u256::div(
-                    u256::mul(y_token_per_share_u256, u256::from_u64(total_staked_token)),
-                    u256::from_u128(precision_factor)
-                )
-            )
-        );
 
         (u256::as_u128(x_token_per_share_u256), u256::as_u128(y_token_per_share_u256))
     }

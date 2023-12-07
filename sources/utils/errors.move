@@ -57,6 +57,9 @@ module baptswap_v2::errors {
     const COINTYPE_DOES_NOT_MATCH_X_OR_Y: u64 = 38;
     const ERROR_SAME_ADDRESS: u64 = 39;
     const NOT_LIQUIDITY_PROVIDER: u64 = 40;
+    const ERROR_SAME_TOKEN: u64 = 41;
+
+    const ERROR_INTERNAL: u64 = 1000;
 
     public(friend) fun only_admin(): u64 { error::permission_denied(ERROR_ONLY_ADMIN) }
     public(friend) fun already_initialized(): u64 { error::invalid_argument(ERROR_ALREADY_INITIALIZED) }
@@ -96,4 +99,6 @@ module baptswap_v2::errors {
     public(friend) fun coin_type_does_not_match_x_or_y(): u64 { error::internal(COINTYPE_DOES_NOT_MATCH_X_OR_Y) }
     public(friend) fun same_address(): u64 { error::invalid_argument(ERROR_SAME_ADDRESS) }
     public(friend) fun not_liquidity_provider(): u64 { error::aborted(NOT_LIQUIDITY_PROVIDER) }
+    public(friend) fun same_token(): u64 { error::invalid_argument(ERROR_SAME_TOKEN) }
+    public(friend) fun internal(): u64 { error::internal(ERROR_INTERNAL) }
 }

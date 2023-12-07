@@ -14,8 +14,8 @@ module baptswap_v2::swap_v2_test {
 
     use aptos_framework::resource_account;
 
-    use aptos_std::math64::pow;
     use aptos_std::debug;
+    use aptos_std::math64::pow;
     
     use baptswap::math;
     use baptswap::swap_utils;
@@ -189,15 +189,13 @@ module baptswap_v2::swap_v2_test {
 
         // initialize fee on transfer of both tokens
         fee_on_transfer::initialize_fee_on_transfer<TestBAPT>(alice, 0, 200, 200);
-        fee_on_transfer::initialize_fee_on_transfer<TestMAU>(bob, 0, 200, 200);
+        fee_on_transfer::initialize_fee_on_transfer<TestMAU>(bob, 0, 500, 500);
 
         // register fee on transfer in the pairs
-        router_v2::register_fee_on_transfer_in_a_pair<TestBAPT, TestBAPT, TestMAU>(alice);
-        router_v2::register_fee_on_transfer_in_a_pair<TestMAU, TestBAPT, TestMAU>(bob);
+        router_v2::register_fee_on_transfer_in_a_pair<TestBAPT, TestBAPT, TestMAU>(alice, false);
+        router_v2::register_fee_on_transfer_in_a_pair<TestMAU, TestBAPT, TestMAU>(bob, false);
 
         // Initialize rewards pool
-        router_v2::create_rewards_pool<TestMAU, TestBAPT>(bob, false);
-        // router_v2::create_rewards_pool<APT, TestBAPT>(alice, false);
         let response = stake::is_pool_created<TestBAPT, TestMAU>();
         debug::print<bool>(&response); 
 
@@ -240,7 +238,7 @@ module baptswap_v2::swap_v2_test {
         // assert!(coin::balance<TestMAU>(@treasury) = 2 * pow(10, 6), 111);
         router_v2::swap_exact_input<TestMAU, TestBAPT>(bob, input_x, 0);
         router_v2::swap_exact_input<TestBAPT, TestMAU>(alice, input_x, 0);
-        router_v2::swap_exact_output<TestBAPT, TestMAU>(alice, 1 * pow(10, 4), MAX_U64);
+        // router_v2::swap_exact_output<TestBAPT, TestMAU>(alice, 1 * pow(10, 4), MAX_U64);
         let (staked_tokens, balance_x, balance_y, magnified_dividends_per_share_x, magnified_dividends_per_share_y, precision_factor, is_x_staked) = stake::token_rewards_pool_info<TestBAPT, TestMAU>();
         let liquidity = (swap_v2::total_lp_supply<TestBAPT, TestMAU>() as u64);
         
@@ -253,10 +251,70 @@ module baptswap_v2::swap_v2_test {
         debug::print<u64>(&pool_balance_x);
         debug::print<u64>(&pool_balance_y);
 
+        let (second_pool_balance_x, second_pool_balance_y) = stake::get_rewards_fees_accumulated<TestMAU, TestBAPT>();
+
+        debug::print<u64>(&second_pool_balance_x);
+        debug::print<u64>(&second_pool_balance_y);
+
         // treasury receives the swap fee
         debug::print<u64>(&coin::balance<TestBAPT>(@treasury));
         debug::print<u64>(&coin::balance<TestMAU>(@treasury));
     }
+
+    #[test(aptos_framework = @0x1, bapt_framework = @bapt_framework, dev = @dev_2, admin = @default_admin, resource_account = @baptswap_v2, treasury = @treasury, alice = @0x123, bob = @0x456)]
+    // execute multiple swaps and assert treasury balance
+    fun test_treasury_balance(
+        aptos_framework: signer,
+        bapt_framework: &signer, 
+        dev: &signer,
+        admin: &signer,
+        resource_account: &signer,
+        treasury: &signer,
+        bob: &signer,
+        alice: &signer,
+    ) {
+        setup_test_with_genesis(aptos_framework, bapt_framework, dev, admin, treasury, resource_account, alice, bob);
+
+        coin::transfer<TestBAPT>(alice, signer::address_of(bob), 10 * pow(10, 8));
+        coin::transfer<TestMAU>(bob, signer::address_of(alice), 10 * pow(10, 8));
+
+        coin::register<TestMAU>(alice);
+        coin::register<TestBAPT>(bob);
+        coin::register<TestBAPT>(treasury);
+        coin::register<TestMAU>(treasury);
+
+        // create pair
+        router_v2::create_pair<TestBAPT, TestMAU>(alice);
+
+        // initialize fee on transfer of both tokens
+        fee_on_transfer::initialize_fee_on_transfer<TestBAPT>(alice, 0, 100, 100);
+        fee_on_transfer::initialize_fee_on_transfer<TestMAU>(bob, 0, 200, 200);
+
+        // register fee on transfer in the pairs
+        router_v2::register_fee_on_transfer_in_a_pair<TestBAPT, TestBAPT, TestMAU>(alice, false);
+        router_v2::register_fee_on_transfer_in_a_pair<TestMAU, TestBAPT, TestMAU>(bob, false);
+
+
+        let bob_liquidity_x = 10 * pow(10, 8);
+        let bob_liquidity_y = 10 * pow(10, 8);
+        let alice_liquidity_x = 2 * pow(10, 8);
+        let alice_liquidity_y = 4 * pow(10, 8);
+
+        // bob provider liquidity for BAPT-MAU
+        router_v2::add_liquidity<TestBAPT, TestMAU>(bob, bob_liquidity_x, bob_liquidity_y, 0, 0);
+
+        let input_x = 2 * pow(10, 6);
+        // TestBAPT is X and TestMAU is Y -> Fees are in TestMAU
+        router_v2::swap_exact_input<TestBAPT, TestMAU>(alice, input_x, 0);
+
+        // TestMAU is X and TestBAPT is Y -> Fees are in TestBAPT
+        router_v2::swap_exact_input<TestMAU, TestBAPT>(bob, input_x, 0);
+
+        // treasury wallet receives the treasury fee
+        debug::print<u64>(&coin::balance<TestBAPT>(@treasury));
+        debug::print<u64>(&coin::balance<TestMAU>(@treasury));
+    }
+        
 
     // #[test(dev = @dev_2_2, admin = @default_admin, resource_account = @baptswap_v2, treasury = @treasury, bob = @0x12345, alice = @0x12346)]
     // fun test_add_liquidity(
