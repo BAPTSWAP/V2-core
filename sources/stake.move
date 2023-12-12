@@ -196,7 +196,7 @@ module baptswap_v2::stake {
     }
 
     // unstake tokens pair
-    public entry fun withdraw<X, Y>(
+    public(friend) entry fun withdraw<X, Y>(
         sender: &signer,
         amount: u64
     ) acquires TokenPairRewardsPool, RewardsPoolUserInfo {
@@ -232,16 +232,11 @@ module baptswap_v2::stake {
             if (amount > 0) {
                 utils::transfer_out<X>(&mut user_info.staked_tokens, sender, amount);
                 pool_info.staked_tokens = pool_info.staked_tokens - amount;
-                // update magnified dividends per share
-                pool_info.magnified_dividends_per_share_x = pool_info.magnified_dividends_per_share_x + ((amount as u128) * pool_info.precision_factor / (pool_info.staked_tokens as u128));
-                pool_info.magnified_dividends_per_share_y = pool_info.magnified_dividends_per_share_y + ((amount as u128) * pool_info.precision_factor / (pool_info.staked_tokens as u128));
             };
 
             // Calculate and update user corrections
             user_info.reward_debt_x = reward_debt(coin::value(&user_info.staked_tokens), pool_info.magnified_dividends_per_share_x, pool_info.precision_factor);
             user_info.reward_debt_y = reward_debt(coin::value(&user_info.staked_tokens), pool_info.magnified_dividends_per_share_y, pool_info.precision_factor);
-
-
         } else {
             assert!(exists<RewardsPoolUserInfo<X, Y, Y>>(account_address), errors::no_stake());
             let user_info = borrow_global_mut<RewardsPoolUserInfo<X, Y, Y>>(account_address);
@@ -278,9 +273,7 @@ module baptswap_v2::stake {
     }    
 
     // claim rewards
-    public entry fun claim_rewards<X, Y>(
-        sender: &signer
-    ) acquires TokenPairRewardsPool, RewardsPoolUserInfo {
+    public(friend) entry fun claim_rewards<X, Y>(sender: &signer) acquires TokenPairRewardsPool, RewardsPoolUserInfo {
         let account_address = signer::address_of(sender);
 
         assert!(exists<TokenPairRewardsPool<X, Y>>(constants::get_resource_account_address()), errors::pool_not_created());
@@ -308,7 +301,7 @@ module baptswap_v2::stake {
                 coin::deposit(signer::address_of(sender), y_out);
             };
 
-            //Calculate and update user corrections
+            // Calculate and update user corrections
             user_info.reward_debt_x = reward_debt(coin::value(&user_info.staked_tokens), pool_info.magnified_dividends_per_share_x, pool_info.precision_factor);
             user_info.reward_debt_y = reward_debt(coin::value(&user_info.staked_tokens), pool_info.magnified_dividends_per_share_y, pool_info.precision_factor);
  
@@ -334,7 +327,7 @@ module baptswap_v2::stake {
                 coin::deposit(signer::address_of(sender), y_out);
             };
 
-            //Calculate and update user corrections
+            // Calculate and update user corrections
             user_info.reward_debt_x = reward_debt(coin::value(&user_info.staked_tokens), pool_info.magnified_dividends_per_share_x, pool_info.precision_factor);
             user_info.reward_debt_y = reward_debt(coin::value(&user_info.staked_tokens), pool_info.magnified_dividends_per_share_y, pool_info.precision_factor);
  

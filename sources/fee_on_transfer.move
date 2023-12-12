@@ -4,6 +4,8 @@
 
 module baptswap_v2::fee_on_transfer {
 
+    use aptos_framework::event;
+
     // use aptos_std::debug;
 
     use bapt_framework::deployer;
@@ -27,6 +29,70 @@ module baptswap_v2::fee_on_transfer {
         liquidity_fee_modifier: u128,
         rewards_fee_modifier: u128,
         team_fee_modifier: u128,
+    }
+
+    // ------
+    // Events
+    // ------
+
+    #[event]
+    struct FeeOnTransferInfoInitializedEvent has drop, store {
+        owner: address,
+        liquidity_fee_modifier: u128,
+        rewards_fee_modifier: u128,
+        team_fee_modifier: u128,
+    }
+
+    #[event]
+    struct LiquidityChangeEvent has drop, store { 
+        old_liquidity_fee: u128,
+        new_liquidity_fee: u128 
+    }
+
+    #[event]
+    struct RewardsChangeEvent has drop, store { 
+        old_rewards_fee: u128,
+        new_rewards_fee: u128 
+    }
+
+    #[event]
+    struct TeamChangeEvent has drop, store {
+        old_team_fee: u128,
+        new_team_fee: u128
+    }
+
+    fun emit_fee_on_transfer_info_initialized_event<CoinType>(
+        owner: address,
+        liquidity_fee_modifier: u128,
+        rewards_fee_modifier: u128,
+        team_fee_modifier: u128
+    ) {
+        event::emit<FeeOnTransferInfoInitializedEvent>(
+            FeeOnTransferInfoInitializedEvent {
+                owner,
+                liquidity_fee_modifier,
+                rewards_fee_modifier,
+                team_fee_modifier
+            }
+        )
+    }
+
+    fun emit_liquidity_fee_updated_event(old_liquidity_fee: u128, new_liquidity_fee: u128) {
+        event::emit<LiquidityChangeEvent>(
+            LiquidityChangeEvent { old_liquidity_fee, new_liquidity_fee }  
+        )
+    }
+
+    fun emit_rewards_fee_updated_event(old_rewards_fee: u128, new_rewards_fee: u128) {
+        event::emit<RewardsChangeEvent>(
+            RewardsChangeEvent { old_rewards_fee, new_rewards_fee }  
+        )
+    }
+
+    fun emit_team_fee_updated_event(old_team_fee: u128, new_team_fee: u128) {
+        event::emit<TeamChangeEvent>(
+            TeamChangeEvent { old_team_fee, new_team_fee }  
+        )
     }
 
     // --------------------
@@ -57,6 +123,13 @@ module baptswap_v2::fee_on_transfer {
                 team_fee_modifier: team_fee
             }
         );
+        // emit event
+        emit_fee_on_transfer_info_initialized_event<CoinType>(
+            signer::address_of(sender),
+            liquidity_fee,
+            rewards_fee,
+            team_fee
+        );
     }
 
     // ------------------
@@ -82,6 +155,8 @@ module baptswap_v2::fee_on_transfer {
         );
         // update the fee
         fee_on_transfer.liquidity_fee_modifier = new_fee;
+        // emit event
+        emit_liquidity_fee_updated_event(fee_on_transfer_liquidity_fee, new_fee);
     }
 
     // update fee_on_transfer rewards fee
@@ -95,10 +170,12 @@ module baptswap_v2::fee_on_transfer {
         // assert the newer total fee is less than the threshold
         assert!(
             does_not_exceed_fee_on_transfer_threshold(new_fee + fee_on_transfer.liquidity_fee_modifier + fee_on_transfer.team_fee_modifier), 
-            1
+            errors::excessive_fee()
         );
         // update the fee
         fee_on_transfer.rewards_fee_modifier = new_fee;
+        // emit event
+        emit_rewards_fee_updated_event(fee_on_transfer_rewards_fee, new_fee);
     }
 
     // update fee_on_transfer team fee
@@ -112,10 +189,12 @@ module baptswap_v2::fee_on_transfer {
         // assert the newer total fee is less than the threshold
         assert!(
             does_not_exceed_fee_on_transfer_threshold(new_fee + fee_on_transfer.liquidity_fee_modifier + fee_on_transfer.rewards_fee_modifier), 
-            1
+            errors::excessive_fee()
         );
         // update the fee
         fee_on_transfer.team_fee_modifier = new_fee;
+        // emit event
+        emit_team_fee_updated_event(fee_on_transfer_team_fee, new_fee);
     }
 
     // ---------
@@ -178,5 +257,35 @@ module baptswap_v2::fee_on_transfer {
     // Checks if the fee on transfer is created
     public fun is_created<CoinType>(): bool {
         exists<FeeOnTransferInfo<CoinType>>(constants::get_resource_account_address())
+    }
+
+    // ----
+    // Test
+    // ----
+
+    #[test_only]
+    public entry fun initialize_fee_on_transfer_for_test<CoinType>(
+        sender: &signer,
+        liquidity_fee: u128,
+        rewards_fee: u128,
+        team_fee: u128
+    ) {
+        // assert that the token info is not initialized yet
+        assert!(!exists<FeeOnTransferInfo<CoinType>>(constants::get_resource_account_address()), errors::already_initialized());
+        assert!(deployer::is_coin_owner<CoinType>(sender), errors::not_owner());
+        // assert that the fees do not exceed the threshold
+        let fee_on_transfer = liquidity_fee + rewards_fee + team_fee;
+        assert!(does_not_exceed_fee_on_transfer_threshold(fee_on_transfer), errors::excessive_fee());
+        // move token info under the resource account
+        let resource_signer = &admin::get_resource_signer();
+        move_to(
+            resource_signer, 
+            FeeOnTransferInfo<CoinType> {
+                owner: signer::address_of(sender),
+                liquidity_fee_modifier: liquidity_fee,
+                rewards_fee_modifier: rewards_fee,
+                team_fee_modifier: team_fee
+            }
+        );
     }
 }

@@ -7,6 +7,8 @@
 
 module baptswap_v2::admin {
 
+    use aptos_framework::event;
+
     use std::signer;
 
     // use aptos_std::debug;
@@ -40,6 +42,67 @@ module baptswap_v2::admin {
         table: SmartTable<u64, address>  // <id, ownership offer>
     }
 
+    // ------
+    // Events
+    // ------
+
+    #[event]
+    struct OwnershipTransferRequestEvent has drop, store { memo: u64, new_owner: address }
+    #[event]
+    struct OwnershipTransferCanceledEvent has drop, store { memo: u64, new_owner: address }
+    #[event]
+    struct TreasuryAddressUpdatedEvent has drop, store { old_treasury_address: address,  new_treasury_address: address }
+    #[event]
+    struct AdminUpdatedEvent has drop, store { old_admin: address, new_admin: address }
+    #[event]
+    struct DexLiquidityFeeUpdatedEvent has drop, store { old_liquidity_fee: u128, new_liquidity_fee: u128 }
+    #[event]
+    struct DexTreasuryFeeUpdatedEvent has drop, store { old_treasury_fee: u128, new_treasury_fee: u128 }
+    #[event]
+    struct OwnershipTransferRejectedEvent has drop, store { memo: u64 }
+
+    fun emit_ownership_transfer_request_event(memo: u64, new_owner: address) {
+        event::emit<OwnershipTransferRequestEvent>(
+            OwnershipTransferRequestEvent { memo, new_owner }
+        );
+    }
+
+    fun emit_ownership_transfer_canceled_event(memo: u64, new_owner: address) {
+        event::emit<OwnershipTransferCanceledEvent>(
+            OwnershipTransferCanceledEvent { memo, new_owner }
+        );
+    }
+
+    fun emit_treasury_address_updated_event(old_treasury_address: address, new_treasury_address: address) {
+        event::emit<TreasuryAddressUpdatedEvent>(
+            TreasuryAddressUpdatedEvent { old_treasury_address, new_treasury_address }
+        );
+    }
+
+    fun emit_admin_updated_event(old_admin: address, new_admin: address) {
+        event::emit<AdminUpdatedEvent>(
+            AdminUpdatedEvent { old_admin, new_admin }
+        );
+    }
+
+    fun emit_dex_liquidity_fee_updated_event(old_liquidity_fee: u128, new_liquidity_fee: u128) {
+        event::emit<DexLiquidityFeeUpdatedEvent>(
+            DexLiquidityFeeUpdatedEvent { old_liquidity_fee, new_liquidity_fee }
+        );
+    }
+
+    fun emit_dex_treasury_fee_updated_event(old_treasury_fee: u128, new_treasury_fee: u128) {
+        event::emit<DexTreasuryFeeUpdatedEvent>(
+            DexTreasuryFeeUpdatedEvent { old_treasury_fee, new_treasury_fee }
+        );
+    }
+
+    fun emit_ownership_transfer_rejected_event(memo: u64) {
+        event::emit<OwnershipTransferRejectedEvent>(
+            OwnershipTransferRejectedEvent { memo }
+        );
+    }
+
     // --------------------
     // Initialize Functions
     // --------------------
@@ -61,21 +124,29 @@ module baptswap_v2::admin {
 
     // from the perspective of the sender
     public entry fun offer_admin_previliges(signer_ref: &signer, receiver_addr: address, memo: u64) acquires AdminInfo, Pending {
+        // assert no request is pending
+        assert!(smart_table::length(&borrow_global_mut<Pending>(constants::get_resource_account_address()).table) == 0, errors::pending_request());
         // assert signer is the admin
         assert!(signer::address_of(signer_ref) == get_admin(), errors::not_admin());
         // assert receiver_addr is not the admin
         assert!(receiver_addr != get_admin(), errors::same_address());
         // create a new table entry
-        smart_table::add<u64, address>(&mut borrow_global_mut<Pending>(constants::get_resource_account_address()).table, memo, receiver_addr)
+        smart_table::add<u64, address>(&mut borrow_global_mut<Pending>(constants::get_resource_account_address()).table, memo, receiver_addr);
+        // emit event
+        emit_ownership_transfer_request_event(memo, receiver_addr);
     }
 
     public entry fun offer_treasury_previliges(signer_ref: &signer, receiver_addr: address, memo: u64) acquires AdminInfo, Pending {
+        // assert no request is pending
+        assert!(smart_table::length(&borrow_global_mut<Pending>(constants::get_resource_account_address()).table) == 0, errors::pending_request());
         // assert signer is the admin
         assert!(signer::address_of(signer_ref) == get_admin(), errors::not_admin());
         // assert receiver_addr is not the admin
         assert!(receiver_addr != get_treasury_address(), errors::same_address());
         // create a new table entry
-        smart_table::add<u64, address>(&mut borrow_global_mut<Pending>(constants::get_resource_account_address()).table, memo, receiver_addr)
+        smart_table::add<u64, address>(&mut borrow_global_mut<Pending>(constants::get_resource_account_address()).table, memo, receiver_addr);
+        // emit event
+        emit_ownership_transfer_request_event(memo, receiver_addr);
     }
 
     public entry fun cancel_admin_previliges(signer_ref: &signer, memo: u64) acquires AdminInfo, Pending {
@@ -83,6 +154,8 @@ module baptswap_v2::admin {
         assert!(signer::address_of(signer_ref) == get_admin(), errors::not_admin());
         // destruct the pending resource
         smart_table::remove<u64, address>(&mut borrow_global_mut<Pending>(constants::get_resource_account_address()).table, memo);
+        // emit event
+        emit_ownership_transfer_canceled_event(memo, get_admin());
     }
 
     public entry fun cancel_treasury_previliges(signer_ref: &signer, memo: u64) acquires AdminInfo, Pending {
@@ -90,6 +163,8 @@ module baptswap_v2::admin {
         assert!(signer::address_of(signer_ref) == get_treasury_address(), errors::not_admin());
         // destruct the pending resource
         smart_table::remove<u64, address>(&mut borrow_global_mut<Pending>(constants::get_resource_account_address()).table, memo);
+        // emit event
+        emit_ownership_transfer_canceled_event(memo, get_treasury_address());
     }
 
     // from the perspective of the receiver
@@ -105,6 +180,8 @@ module baptswap_v2::admin {
         set_admin(*smart_table::borrow(&borrow_global_mut<Pending>(constants::get_resource_account_address()).table, memo));
         // remove the entry
         smart_table::remove<u64, address>(&mut borrow_global_mut<Pending>(constants::get_resource_account_address()).table, memo);
+        // emit event
+        emit_admin_updated_event(signer_addr, get_admin());
     }
 
     public entry fun claim_treasury_previliges(signer_ref: &signer, memo: u64) acquires AdminInfo, Pending {
@@ -119,6 +196,8 @@ module baptswap_v2::admin {
         set_treasury_address(*smart_table::borrow(&borrow_global_mut<Pending>(constants::get_resource_account_address()).table, memo));
         // remove the entry
         smart_table::remove<u64, address>(&mut borrow_global_mut<Pending>(constants::get_resource_account_address()).table, memo);
+        // emit event
+        emit_treasury_address_updated_event(signer_addr, get_treasury_address());
     }
 
     public entry fun reject_admin_previliges(signer_ref: &signer, memo: u64) acquires Pending {
@@ -131,6 +210,8 @@ module baptswap_v2::admin {
         );
         // remove the entry
         smart_table::remove<u64, address>(&mut borrow_global_mut<Pending>(constants::get_resource_account_address()).table, memo);
+        // emit event
+        emit_ownership_transfer_rejected_event(memo);
     }
 
     public entry fun reject_treasury_previliges(signer_ref: &signer, memo: u64) acquires Pending {
@@ -143,6 +224,8 @@ module baptswap_v2::admin {
         );
         // remove the entry
         smart_table::remove<u64, address>(&mut borrow_global_mut<Pending>(constants::get_resource_account_address()).table, memo);
+        // emit event
+        emit_ownership_transfer_rejected_event(memo);
     }
 
     // --------
@@ -167,26 +250,30 @@ module baptswap_v2::admin {
     public entry fun set_dex_liquidity_fee(sender: &signer, new_fee: u128) acquires AdminInfo {
         let swap_info = borrow_global_mut<AdminInfo>(@baptswap_v2);
         // assert sender is admin
-        assert!(signer::address_of(sender) == swap_info.admin, 1);
+        assert!(signer::address_of(sender) == swap_info.admin, errors::not_admin());
         // assert new fee is not equal to the existing fee
-        assert!(new_fee != swap_info.liquidity_fee_modifier, 1);
+        assert!(new_fee != swap_info.liquidity_fee_modifier, errors::already_initialized());
         // assert the newer total fee is less than the threshold
-        assert!(does_not_exceed_dex_fee_threshold(new_fee + swap_info.treasury_fee_modifier) == true, 1);
+        assert!(does_not_exceed_dex_fee_threshold(new_fee + swap_info.treasury_fee_modifier), errors::excessive_fee());
         // update the fee
         swap_info.liquidity_fee_modifier = new_fee;
+        // emit event
+        emit_dex_liquidity_fee_updated_event(swap_info.liquidity_fee_modifier, new_fee);
     }
 
     // Set dex treasury fee
     public entry fun set_dex_treasury_fee(sender: &signer, new_fee: u128) acquires AdminInfo {
         let swap_info = borrow_global_mut<AdminInfo>(@baptswap_v2);
         // assert sender is admin
-        assert!(signer::address_of(sender) == swap_info.admin, 1);
+        assert!(signer::address_of(sender) == swap_info.admin, errors::already_initialized());
         // assert new fee is not equal to the existing fee
-        assert!(new_fee != swap_info.treasury_fee_modifier, 1);
+        assert!(new_fee != swap_info.treasury_fee_modifier, errors::already_initialized());
         // assert the newer total fee is less than the threshold
-        assert!(does_not_exceed_dex_fee_threshold(new_fee + swap_info.liquidity_fee_modifier) == true, 1);
+        assert!(does_not_exceed_dex_fee_threshold(new_fee + swap_info.liquidity_fee_modifier), errors::excessive_fee());
         // update the fee
         swap_info.treasury_fee_modifier = new_fee;
+        // emit event
+        emit_dex_treasury_fee_updated_event(swap_info.treasury_fee_modifier, new_fee);
     }
 
     // --------------

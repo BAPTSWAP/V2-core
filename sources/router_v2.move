@@ -10,6 +10,7 @@ module baptswap_v2::router_v2 {
     use baptswap_v2::fee_on_transfer;
     use baptswap_v2::errors;
     use baptswap_v2::stake;
+    use baptswap_v2::swap_utils_v2;
     use baptswap_v2::swap_v2;
 
     use bapt_framework::deployer;
@@ -21,7 +22,7 @@ module baptswap_v2::router_v2 {
     public entry fun create_pair<X, Y>(
         sender: &signer,
     ) {
-        if (swap_utils::sort_token_type<X, Y>()) {
+        if (swap_utils_v2::sort_token_type<X, Y>()) {
             swap_v2::create_pair<X, Y>(sender);
         } else {
             swap_v2::create_pair<Y, X>(sender);
@@ -39,7 +40,7 @@ module baptswap_v2::router_v2 {
         amount: u64
     ) {
         assert_pair_is_created<X, Y>();
-        if (swap_utils::sort_token_type<X, Y>()) {
+        if (swap_utils_v2::sort_token_type<X, Y>()) {
             assert!(stake::is_pool_created<X, Y>(), errors::pool_not_created());
             stake::deposit<X, Y>(sender, amount);
         } else {
@@ -54,7 +55,7 @@ module baptswap_v2::router_v2 {
     ) {
         assert_pair_is_created<X, Y>();
         assert!(((stake::is_pool_created<X, Y>() || stake::is_pool_created<Y, X>())), errors::pool_not_created());
-        if (swap_utils::sort_token_type<X, Y>()) {
+        if (swap_utils_v2::sort_token_type<X, Y>()) {
             stake::withdraw<X, Y>(sender, amount);
         } else {
             stake::withdraw<Y, X>(sender, amount);
@@ -125,7 +126,7 @@ module baptswap_v2::router_v2 {
         let amount_x;
         let amount_y;
         let _lp_amount;
-        if (swap_utils::sort_token_type<X, Y>()) {
+        if (swap_utils_v2::sort_token_type<X, Y>()) {
             (amount_x, amount_y, _lp_amount) = swap_v2::add_liquidity<X, Y>(sender, amount_x_desired, amount_y_desired);
             assert!(amount_x >= amount_x_min, errors::insufficient_x_amount());
             assert!(amount_y >= amount_y_min, errors::insufficient_y_amount());
@@ -151,7 +152,7 @@ module baptswap_v2::router_v2 {
     ) {
         let amount_x;
         let amount_y;
-        if (swap_utils::sort_token_type<X, Y>()) {
+        if (swap_utils_v2::sort_token_type<X, Y>()) {
             assert_pair_is_created<X, Y>();
             (amount_x, amount_y) = swap_v2::remove_liquidity<X, Y>(sender, liquidity);
             assert!(amount_x >= amount_x_min, errors::insufficient_x_amount());
@@ -171,7 +172,7 @@ module baptswap_v2::router_v2 {
         amount_x_out: u64,
         amount_y_out: u64
     ) {
-        if (swap_utils::sort_token_type<X, Y>()){
+        if (swap_utils_v2::sort_token_type<X, Y>()){
             swap_v2::add_swap_event_with_address<X, Y>(sender_addr, amount_x_in, amount_y_in, amount_x_out, amount_y_out);
         } else {
             swap_v2::add_swap_event_with_address<Y, X>(sender_addr, amount_y_in, amount_x_in, amount_y_out, amount_x_out);
@@ -199,7 +200,7 @@ module baptswap_v2::router_v2 {
     }
 
     fun swap_exact_input_internal<X, Y>(sender: &signer, x_in: u64, y_min_out: u64): u64 {
-        let y_out = if (swap_utils::sort_token_type<X, Y>()) {
+        let y_out = if (swap_utils_v2::sort_token_type<X, Y>()) {
             assert_pair_is_created<X, Y>();
             swap_v2::swap_exact_x_to_y<X, Y>(sender, x_in, signer::address_of(sender))
         } else {
@@ -260,17 +261,15 @@ module baptswap_v2::router_v2 {
     // TODO: Z is USDC
 
     fun swap_exact_output_internal<X, Y>(sender: &signer, y_out: u64, x_max_in: u64): u64 {
-        let x_in = if (swap_utils::sort_token_type<X, Y>()) {
+        let x_in = if (swap_utils_v2::sort_token_type<X, Y>()) {
             assert_pair_is_created<X, Y>();
             let (rin, rout, _) = swap_v2::token_reserves<X, Y>();
-            let total_fees = swap_v2::token_fees<X, Y>();
-            let amount_in = swap_utils::get_amount_in(y_out, rin, rout, total_fees);
+            let amount_in = swap_utils_v2::get_amount_in(y_out, rin, rout);
             swap_v2::swap_x_to_exact_y<X, Y>(sender, amount_in, y_out, signer::address_of(sender))
         } else {
             assert_pair_is_created<Y, X>();
             let (rout, rin, _) = swap_v2::token_reserves<Y, X>();
-            let total_fees = swap_v2::token_fees<Y, X>();
-            let amount_in = swap_utils::get_amount_in(y_out, rin, rout, total_fees);
+            let amount_in = swap_utils_v2::get_amount_in(y_out, rin, rout);
             swap_v2::swap_y_to_exact_x<Y, X>(sender, amount_in, y_out, signer::address_of(sender))
         };
         assert!(x_in <= x_max_in, errors::input_more_than_max());
@@ -297,18 +296,16 @@ module baptswap_v2::router_v2 {
     fun get_amount_in_internal<X, Y>(is_x_to_y:bool, y_out_amount: u64): u64 {
         if (is_x_to_y) {
             let (rin, rout, _) = swap_v2::token_reserves<X, Y>();
-            let total_fees = swap_v2::token_fees<X, Y>();
-            swap_utils::get_amount_in(y_out_amount, rin, rout, total_fees)
+            swap_utils_v2::get_amount_in(y_out_amount, rin, rout)
         } else {
             let (rout, rin, _) = swap_v2::token_reserves<Y, X>();
-            let total_fees = swap_v2::token_fees<Y, X>();
-            swap_utils::get_amount_in(y_out_amount, rin, rout, total_fees)
+            swap_utils_v2::get_amount_in(y_out_amount, rin, rout)
         }
     } 
 
     public fun get_amount_in<X, Y>(y_out_amount: u64): u64 {
         assert_pair_is_created<X, Y>();
-        let is_x_to_y = swap_utils::sort_token_type<X, Y>();
+        let is_x_to_y = swap_utils_v2::sort_token_type<X, Y>();
         get_amount_in_internal<X, Y>(is_x_to_y, y_out_amount)
     }
 

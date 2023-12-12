@@ -58,7 +58,7 @@ module baptswap_v2::errors {
     const ERROR_SAME_ADDRESS: u64 = 39;
     const NOT_LIQUIDITY_PROVIDER: u64 = 40;
     const ERROR_SAME_TOKEN: u64 = 41;
-
+    const ERROR_PENDING_REQUEST: u64 = 42;
     const ERROR_INTERNAL: u64 = 1000;
 
     public(friend) fun only_admin(): u64 { error::permission_denied(ERROR_ONLY_ADMIN) }
@@ -101,4 +101,5 @@ module baptswap_v2::errors {
     public(friend) fun not_liquidity_provider(): u64 { error::aborted(NOT_LIQUIDITY_PROVIDER) }
     public(friend) fun same_token(): u64 { error::invalid_argument(ERROR_SAME_TOKEN) }
     public(friend) fun internal(): u64 { error::internal(ERROR_INTERNAL) }
+    public(friend) fun pending_request(): u64 { error::aborted(ERROR_PENDING_REQUEST) } 
 }

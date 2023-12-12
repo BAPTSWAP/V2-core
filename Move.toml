@@ -1,11 +1,11 @@
 [package]
 name = "BaptswapV2"
-version = "0.2.11"
+version = "0.3.1"
 authors = []
 
 [addresses]
 bapt_framework = "b1d76027a907d3597deb415de1f15103bf36e933468afa41d758487e1b62a663"
-baptswap_v2 = "4d054856f6afb8e25bb387a42f1e72c8b0deb999ab98b8ea4c8adf46273f8d63"
+baptswap_v2 = "0xee755dc1a72d4540db6f39cc34ea97c6218d150a7835b5b63cf1c6e54a32ae24"
 dev_2 = "97c8aca6082f2ef7a0046c72eb81ebf203ca23086baf15557579570c86a89fd3"
 
 # to be set! testing only
@@ -20,7 +20,7 @@ bob = "0x456"
 
 [dependencies.AptosFramework]
 git = "https://github.com/aptos-labs/aptos-core.git"
-rev = "testnet"
+rev = "mainnet"
 subdir = "aptos-move/framework/aptos-framework"
 
 [dependencies.BaptSwap]

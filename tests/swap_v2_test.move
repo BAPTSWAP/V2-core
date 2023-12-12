@@ -36,7 +36,7 @@ module baptswap_v2::swap_v2_test {
         account::create_account_for_test(signer::address_of(dev));
         account::create_account_for_test(signer::address_of(admin));
         account::create_account_for_test(signer::address_of(treasury));
-        resource_account::create_resource_account(dev, b"bapt291123", x"");
+        resource_account::create_resource_account(dev, b"baptswap_v2", x"");
         admin::init_test(resource_account);
         account::create_account_for_test(signer::address_of(bapt_framework));
         coin::register<APT>(bapt_framework);    // for the deployer
@@ -188,8 +188,8 @@ module baptswap_v2::swap_v2_test {
         router_v2::add_liquidity<TestBAPT, TestMAU>(bob, bob_liquidity_x, bob_liquidity_y, 0, 0);
 
         // initialize fee on transfer of both tokens
-        fee_on_transfer::initialize_fee_on_transfer<TestBAPT>(alice, 0, 200, 200);
-        fee_on_transfer::initialize_fee_on_transfer<TestMAU>(bob, 0, 500, 500);
+        fee_on_transfer::initialize_fee_on_transfer_for_test<TestBAPT>(alice, 0, 10, 10);
+        fee_on_transfer::initialize_fee_on_transfer_for_test<TestMAU>(bob, 0, 10, 10);
 
         // register fee on transfer in the pairs
         router_v2::register_fee_on_transfer_in_a_pair<TestBAPT, TestBAPT, TestMAU>(alice, false);
@@ -223,7 +223,7 @@ module baptswap_v2::swap_v2_test {
         debug::print<u64>(&pool_balance_y);
 
         // swap
-        let input_x = 2 * pow(10, 8);
+        let input_x = 2 * pow(10, 6);
 
         let (reserve_x, reserve_y, _) = swap_v2::token_reserves<TestBAPT, TestMAU>();
         let liquidity = (swap_v2::total_lp_supply<TestBAPT, TestMAU>() as u64);
@@ -287,8 +287,8 @@ module baptswap_v2::swap_v2_test {
         router_v2::create_pair<TestBAPT, TestMAU>(alice);
 
         // initialize fee on transfer of both tokens
-        fee_on_transfer::initialize_fee_on_transfer<TestBAPT>(alice, 0, 100, 100);
-        fee_on_transfer::initialize_fee_on_transfer<TestMAU>(bob, 0, 200, 200);
+        fee_on_transfer::initialize_fee_on_transfer_for_test<TestBAPT>(alice, 0, 100, 100);
+        fee_on_transfer::initialize_fee_on_transfer_for_test<TestMAU>(bob, 0, 200, 200);
 
         // register fee on transfer in the pairs
         router_v2::register_fee_on_transfer_in_a_pair<TestBAPT, TestBAPT, TestMAU>(alice, false);
