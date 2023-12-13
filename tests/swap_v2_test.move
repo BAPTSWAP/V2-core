@@ -174,7 +174,7 @@ module baptswap_v2::swap_v2_test {
         coin::transfer<TestBAPT>(alice, signer::address_of(bob), 10 * pow(10, 8));
 
         // create pair
-        router_v2::create_pair<APT, TestBAPT>(alice);
+        router_v2::create_pair<TestBAPT, APT>(alice);
         
         let bob_liquidity_x = 10 * pow(10, 8);
         let bob_liquidity_y = 10 * pow(10, 8);
@@ -185,13 +185,31 @@ module baptswap_v2::swap_v2_test {
         router_v2::add_liquidity<APT, TestBAPT>(bob, bob_liquidity_x, bob_liquidity_y, 0, 0);
 
         // initialize fee on transfer of both tokens
-        fee_on_transfer::initialize_fee_on_transfer_for_test<TestBAPT>(alice, 0, 10, 10);
+        fee_on_transfer::initialize_fee_on_transfer_for_test<TestBAPT>(alice, 10, 10, 10);
+        coin::register<TestBAPT>(treasury);
 
         // register fee on transfer in the pairs
-        router_v2::register_fee_on_transfer_in_a_pair<TestBAPT, APT,TestBAPT>(alice, false);
+        router_v2::register_fee_on_transfer_in_a_pair<TestBAPT, TestBAPT, APT>(alice, false);
+        assert!(swap_v2::is_fee_on_transfer_registered<TestBAPT, TestBAPT, APT>(), 1);
+        // assert!(swap_v2::is_fee_on_transfer_registered<APT, APT, TestBAPT>(), 0);
 
         // stake
         router_v2::stake_tokens_in_pool<TestBAPT, APT>(alice, 5 * pow(10, 8));
+
+        // swap
+        let input_x = 2 * pow(10, 6);
+        router_v2::swap_exact_input<APT, TestBAPT>(alice, input_x, 0);
+        router_v2::swap_exact_output<APT, TestBAPT>(alice, 1 * pow(10, 4), MAX_U64);
+        // router_v2::swap_exact_input<TestBAPT, APT>(alice, input_x, 0);
+        // router_v2::swap_exact_output<TestBAPT, APT>(alice, 1 * pow(10, 4), MAX_U64);
+        router_v2::claim_rewards_from_pool<TestBAPT, APT>(alice);
+
+        router_v2::claim_accumulated_team_fee<TestBAPT, TestBAPT, APT>(alice);
+        let (alice_balance_x, alice_balance_y) = swap_v2::get_accumulated_team_fee<TestBAPT, TestBAPT, APT>();
+        debug::print<u64>(&alice_balance_x);
+
+        router_v2::claim_accumulated_team_fee<TestBAPT, TestBAPT, APT>(alice);
+        assert!(alice_balance_x == 0 && alice_balance_y == 0, 125);
     }   
 
     #[test(aptos_framework = @0x1, bapt_framework = @bapt_framework, dev = @dev_2, admin = @default_admin, resource_account = @baptswap_v2, treasury = @treasury, alice = @0x123, bob = @0x456)]
@@ -225,8 +243,8 @@ module baptswap_v2::swap_v2_test {
         router_v2::add_liquidity<TestBAPT, TestMAU>(bob, bob_liquidity_x, bob_liquidity_y, 0, 0);
 
         // initialize fee on transfer of both tokens
-        fee_on_transfer::initialize_fee_on_transfer_for_test<TestBAPT>(alice, 0, 10, 10);
-        fee_on_transfer::initialize_fee_on_transfer_for_test<TestMAU>(bob, 0, 10, 10);
+        fee_on_transfer::initialize_fee_on_transfer_for_test<TestBAPT>(alice, 10, 20, 30);
+        fee_on_transfer::initialize_fee_on_transfer_for_test<TestMAU>(bob, 35, 55, 15);
 
         // register fee on transfer in the pairs
         router_v2::register_fee_on_transfer_in_a_pair<TestBAPT, TestBAPT, TestMAU>(alice, false);
@@ -296,6 +314,17 @@ module baptswap_v2::swap_v2_test {
         // treasury receives the swap fee
         debug::print<u64>(&coin::balance<TestBAPT>(@treasury));
         debug::print<u64>(&coin::balance<TestMAU>(@treasury));
+
+        let (alice_balance_x, alice_balance_y) = swap_v2::get_accumulated_team_fee<TestBAPT, TestBAPT, TestMAU>();
+        debug::print<u64>(&alice_balance_x);
+        debug::print<u64>(&alice_balance_y);
+
+        let (bob_balance_x, bob_balance_y) = swap_v2::get_accumulated_team_fee<TestMAU, TestBAPT, TestMAU>();
+        debug::print<u64>(&bob_balance_x);
+        debug::print<u64>(&bob_balance_y);
+        router_v2::claim_accumulated_team_fee<TestBAPT, TestBAPT, TestMAU>(alice);
+        let (alice_balance_x, alice_balance_y) = swap_v2::get_accumulated_team_fee<TestBAPT, TestBAPT, TestMAU>();
+        assert!(alice_balance_x == 0 && alice_balance_y == 0, 125);
     }
 
     #[test(aptos_framework = @0x1, bapt_framework = @bapt_framework, dev = @dev_2, admin = @default_admin, resource_account = @baptswap_v2, treasury = @treasury, alice = @0x123, bob = @0x456)]

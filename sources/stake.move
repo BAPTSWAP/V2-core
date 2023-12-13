@@ -226,8 +226,6 @@ module baptswap_v2::stake {
 
     // claim rewards
     public(friend) entry fun claim_rewards<X, Y>(sender: &signer) acquires TokenPairRewardsPool, RewardsPoolUserInfo {
-        let account_address = signer::address_of(sender);
-
         assert!(exists<TokenPairRewardsPool<X, Y>>(constants::get_resource_account_address()), errors::pool_not_created());
         let pool_info = borrow_global_mut<TokenPairRewardsPool<X, Y>>(constants::get_resource_account_address());
 
