@@ -31,8 +31,13 @@ module baptswap_v2::router_v2 {
 
     // Add fee on transfer to a pair; callable only by owners of X or Y
     public entry fun register_fee_on_transfer_in_a_pair<CoinType, X, Y>(sender: &signer, is_x_staked: bool) {
-        swap_v2::add_fee_on_transfer_in_pair<CoinType, X, Y>(sender);
-        stake::create_pool<CoinType, X, Y>(sender, is_x_staked);
+        if (swap_utils_v2::sort_token_type<X, Y>()) {
+            swap_v2::add_fee_on_transfer_in_pair<CoinType, X, Y>(sender);
+            stake::create_pool<CoinType, X, Y>(sender, is_x_staked);
+        } else {
+            swap_v2::add_fee_on_transfer_in_pair<CoinType, Y, X>(sender);
+            stake::create_pool<CoinType, Y, X>(sender, is_x_staked);
+        }
     }
 
     public entry fun stake_tokens_in_pool<X, Y>(
@@ -63,10 +68,18 @@ module baptswap_v2::router_v2 {
     }
 
     // claim team fees in a given pair; claimed by the counterpart token callable by token owners.
-    // Fails if the accumualted fees are zero
+    // Panics if the accumualted fees are zero
     public entry fun claim_accumulated_team_fee<CoinType, X, Y>(sender: &signer) {
         assert_pair_is_created<X, Y>();
         assert!(type_info::type_of<CoinType>() == type_info::type_of<X>() || type_info::type_of<CoinType>() == type_info::type_of<Y>(), errors::coin_type_does_not_match_x_or_y());
+        if (swap_utils_v2::sort_token_type<X, Y>()) {
+            claim_accumulated_team_fee_internal<CoinType, X, Y>(sender);
+        } else {
+            claim_accumulated_team_fee_internal<CoinType, Y, X>(sender);
+        }
+    }
+
+    fun claim_accumulated_team_fee_internal<CoinType, X, Y>(sender: &signer) {
         // based on type
         if (type_info::type_of<CoinType>() == type_info::type_of<X>()) {
             // assert the signer is the token owner
@@ -141,8 +154,6 @@ module baptswap_v2::router_v2 {
         assert!(swap_v2::is_pair_created<X, Y>() || swap_v2::is_pair_created<Y, X>(), errors::pair_not_created());
     }
 
-    // TODO: if a pair not created, find route; should be used in swap 
-
     // Remove Liquidity
     public entry fun remove_liquidity<X, Y>(
         sender: &signer,
@@ -215,7 +226,6 @@ module baptswap_v2::router_v2 {
 
     // multi-hop
     // swap X for Y while pair<X, Y> doesn't exist, intermidiate token is Z
-    
     public fun multi_hop_exact_input<X, Y, Z>(sender: &signer, x_in: u64, y_min_out: u64) {
         // if <X,Y> pair is created, swap X for Y
         if (swap_v2::is_pair_created<X, Y>()) { swap_exact_input<X, Y>(sender, x_in, y_min_out) }
@@ -290,8 +300,6 @@ module baptswap_v2::router_v2 {
         y_out: u64,
         x_max_in: u64
     ) { swap_exact_output_with_z_as_intermidiate<X, Y, APT>( sender, y_out, x_max_in) }
-
-    // TODO: Z and W are APT and BAPT
 
     fun get_amount_in_internal<X, Y>(is_x_to_y:bool, y_out_amount: u64): u64 {
         if (is_x_to_y) {

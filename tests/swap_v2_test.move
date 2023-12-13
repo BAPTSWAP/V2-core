@@ -156,6 +156,44 @@ module baptswap_v2::swap_v2_test {
         router_v2::swap_exact_output<TestBAPT, TestMAU>(alice, 2 * pow(10, 6), MAX_U64);
     }
 
+    // TODO: test multi-hop functions
+
+    #[test(aptos_framework = @0x1, bapt_framework = @bapt_framework, dev = @dev_2, admin = @default_admin, resource_account = @baptswap_v2, treasury = @treasury, alice = @0x123, bob = @0x456)]
+    fun test_stake(
+        aptos_framework: signer,
+        bapt_framework: &signer, 
+        dev: &signer,
+        admin: &signer,
+        resource_account: &signer,
+        treasury: &signer,
+        bob: &signer,
+        alice: &signer,
+    ) {
+        setup_test_with_genesis(aptos_framework, bapt_framework, dev, admin, treasury, resource_account, alice, bob);
+        coin::register<TestBAPT>(treasury);
+        coin::transfer<TestBAPT>(alice, signer::address_of(bob), 10 * pow(10, 8));
+
+        // create pair
+        router_v2::create_pair<APT, TestBAPT>(alice);
+        
+        let bob_liquidity_x = 10 * pow(10, 8);
+        let bob_liquidity_y = 10 * pow(10, 8);
+        let alice_liquidity_x = 15 * pow(10, 8);
+        let alice_liquidity_y = 15 * pow(10, 8);
+
+        // bob provider liquidity for BAPT-APT
+        router_v2::add_liquidity<APT, TestBAPT>(bob, bob_liquidity_x, bob_liquidity_y, 0, 0);
+
+        // initialize fee on transfer of both tokens
+        fee_on_transfer::initialize_fee_on_transfer_for_test<TestBAPT>(alice, 0, 10, 10);
+
+        // register fee on transfer in the pairs
+        router_v2::register_fee_on_transfer_in_a_pair<TestBAPT, APT,TestBAPT>(alice, false);
+
+        // stake
+        router_v2::stake_tokens_in_pool<TestBAPT, APT>(alice, 5 * pow(10, 8));
+    }   
+
     #[test(aptos_framework = @0x1, bapt_framework = @bapt_framework, dev = @dev_2, admin = @default_admin, resource_account = @baptswap_v2, treasury = @treasury, alice = @0x123, bob = @0x456)]
     fun test_create_and_staked_tokens(
         aptos_framework: signer,
@@ -175,7 +213,6 @@ module baptswap_v2::swap_v2_test {
 
         // create pair
         router_v2::create_pair<TestBAPT, TestMAU>(alice);
-        // these are needed for transferring some of the fees since we want them in APT
         router_v2::create_pair<TestBAPT, APT>(alice);
         router_v2::create_pair<TestMAU, APT>(alice);
 
@@ -195,7 +232,7 @@ module baptswap_v2::swap_v2_test {
         router_v2::register_fee_on_transfer_in_a_pair<TestBAPT, TestBAPT, TestMAU>(alice, false);
         router_v2::register_fee_on_transfer_in_a_pair<TestMAU, TestBAPT, TestMAU>(bob, false);
 
-        // Initialize rewards pool
+        // rewards pool
         let response = stake::is_pool_created<TestBAPT, TestMAU>();
         debug::print<bool>(&response); 
 
