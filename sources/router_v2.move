@@ -15,7 +15,7 @@ module baptswap_v2::router_v2 {
 
     use std::signer;
 
-    // Create a Pair from 2 Coins
+    // Create a Pair from 2 coins
     // Should revert if the pair is already created
     public entry fun create_pair<X, Y>(
         sender: &signer,
@@ -42,40 +42,24 @@ module baptswap_v2::router_v2 {
         sender: &signer,
         amount: u64
     ) {
-        if (swap_utils_v2::sort_token_type<X, Y>()) {
-            assert!(swap_v2::is_pair_created<X, Y>(), errors::pair_not_created());
-            assert!(stake::is_pool_created<X, Y>(), errors::pool_not_created());
-            stake::deposit<X, Y>(sender, amount);
-        } else {
-            assert!(swap_v2::is_pair_created<Y, X>(), errors::pair_not_created());
-            assert!(stake::is_pool_created<Y, X>(), errors::pool_not_created());
-            stake::deposit<Y, X>(sender, amount);
-        }
+        assert!(swap_v2::is_pair_created<X, Y>() || swap_v2::is_pair_created<Y, X>(), errors::pair_not_created());
+        assert!(stake::is_pool_created<X, Y>(), errors::pool_not_created());
+        stake::deposit<X, Y>(sender, amount);
     }
 
     public entry fun unstake_tokens_from_pool<X, Y>(
         sender: &signer,
         amount: u64
     ) {
-        assert!(((stake::is_pool_created<X, Y>() || stake::is_pool_created<Y, X>())), errors::pool_not_created());
-        if (swap_utils_v2::sort_token_type<X, Y>()) {
-            assert!(swap_v2::is_pair_created<X, Y>(), errors::pair_not_created());
-            stake::withdraw<X, Y>(sender, amount);
-        } else {
-            assert!(swap_v2::is_pair_created<Y, X>(), errors::pair_not_created());
-            stake::withdraw<Y, X>(sender, amount);
-        }
+        assert!(swap_v2::is_pair_created<X, Y>() || swap_v2::is_pair_created<Y, X>(), errors::pair_not_created());
+        assert!(stake::is_pool_created<X, Y>(), errors::pool_not_created());
+        stake::withdraw<X, Y>(sender, amount);
     }
 
     public entry fun claim_rewards_from_pool<X, Y>(sender: &signer) {
-        assert!(((stake::is_pool_created<X, Y>() || stake::is_pool_created<Y, X>())), errors::pool_not_created());
-        if (swap_utils_v2::sort_token_type<X, Y>()) {
-            assert!(swap_v2::is_pair_created<X, Y>(), errors::pair_not_created());
-            stake::claim_rewards<X, Y>(sender);
-        } else {
-            assert!(swap_v2::is_pair_created<Y, X>(), errors::pair_not_created());
-            stake::claim_rewards<Y, X>(sender);
-        }
+        assert!(swap_v2::is_pair_created<X, Y>() || swap_v2::is_pair_created<Y, X>(), errors::pair_not_created());
+        assert!(stake::is_pool_created<X, Y>(), errors::pool_not_created());
+        stake::claim_rewards<X, Y>(sender);
     }
 
     // claim team fees in a given pair; claimed by the counterpart token callable by token owners.
@@ -98,31 +82,31 @@ module baptswap_v2::router_v2 {
             assert!(deployer::is_coin_owner<X>(sender), errors::not_owner());
             let (team_balance_x, team_balance_y) = swap_v2::get_accumulated_team_fee<X, X, Y>();
             // if team balance x > 0, withdraw it and send it to the signer address
-            if (team_balance_x > 0) {
+            if (swap_v2::is_fee_on_transfer_registered<X, X, Y>() && team_balance_x > 0) {
                 // withdraw accumulated fees, and send it to the signer address
                 let team_fee_x_coins = swap_v2::extract_team_fee_x<X, X, Y>(team_balance_x);
                 coin::deposit<X>(fee_on_transfer::get_owner<X>(), team_fee_x_coins);
             };
             // if team balance y > 0, withdraw it and send it to the signer address
-            if (team_balance_y > 0) {
+            if (swap_v2::is_fee_on_transfer_registered<X, X, Y>() && team_balance_y > 0) {
                 // withdraw accumulated fees, and send it to the signer address
                 let team_fee_y_coins = swap_v2::extract_team_fee_y<X, X, Y>(team_balance_y);
-                coin::deposit<Y>(fee_on_transfer::get_owner<Y>(), team_fee_y_coins);
+                coin::deposit<Y>(fee_on_transfer::get_owner<X>(), team_fee_y_coins);
             };
         } else {
             // assert the signer is the token owner
             assert!(deployer::is_coin_owner<Y>(sender), errors::not_owner());
             let (team_balance_x, team_balance_y) = swap_v2::get_accumulated_team_fee<Y, X, Y>();
             // if team balance x > 0, withdraw it and send it to the signer address
-            if (team_balance_x > 0) {
+            if (swap_v2::is_fee_on_transfer_registered<Y, X, Y>() && team_balance_x > 0) {
                 // assert accumulated fees are not zero 
                 assert!(team_balance_x > 0, errors::insufficient_amount());
                 // withdraw accumulated fees, and send it to the signer address
                 let team_fee_x_coins = swap_v2::extract_team_fee_x<Y, X, Y>(team_balance_x);
-                coin::deposit<X>(fee_on_transfer::get_owner<X>(), team_fee_x_coins);
+                coin::deposit<X>(fee_on_transfer::get_owner<Y>(), team_fee_x_coins);
             };
             // if team balance y > 0, withdraw it and send it to the signer address
-            if (team_balance_y > 0) {
+            if (swap_v2::is_fee_on_transfer_registered<Y, X, Y>() && team_balance_y > 0) {
                 // assert accumulated fees are not zero 
                 assert!(team_balance_y > 0, errors::insufficient_amount());
                 // withdraw accumulated fees, and send it to the signer address
@@ -261,19 +245,6 @@ module baptswap_v2::router_v2 {
         swap_exact_output_internal<X, Y>(sender, y_out, x_max_in);
     }
 
-    public fun multi_hop_exact_output<X, Y, Z>(sender: &signer, y_out: u64, x_max_in: u64) {
-        // if <X,Y> pair is created, swap X for Y
-        if (swap_v2::is_pair_created<X, Y>()) { swap_exact_output<X, Y>(sender, y_out, x_max_in) }
-        else {
-            let z_out = swap_exact_output_internal<Z, Y>(sender, y_out, 0);    // TODO: should not be 0
-            swap_exact_output_internal<X, Z>(sender, z_out, x_max_in); 
-        }   
-    }
-
-    // TODO: Z is BAPT
-
-    // TODO: Z is USDC
-
     fun swap_exact_output_internal<X, Y>(sender: &signer, y_out: u64, x_max_in: u64): u64 {
         let x_in = if (swap_utils_v2::sort_token_type<X, Y>()) {
             assert!(swap_v2::is_pair_created<X, Y>(), errors::pair_not_created());
@@ -291,6 +262,19 @@ module baptswap_v2::router_v2 {
 
         x_in
     }
+
+    public fun multi_hop_exact_output<X, Y, Z>(sender: &signer, y_out: u64, x_max_in: u64) {
+        // if <X,Y> pair is created, swap X for Y
+        if (swap_v2::is_pair_created<X, Y>()) { swap_exact_output<X, Y>(sender, y_out, x_max_in) }
+        else {
+            let z_out = swap_exact_output_internal<Z, Y>(sender, y_out, 0);    // TODO: should not be 0
+            swap_exact_output_internal<X, Z>(sender, z_out, x_max_in); 
+        }   
+    }
+
+    // TODO: Z is BAPT
+
+    // TODO: Z is USDC
 
     public entry fun swap_exact_output_with_z_as_intermidiate<X, Y, Z>(
         sender: &signer,
@@ -327,5 +311,16 @@ module baptswap_v2::router_v2 {
 
     public entry fun register_token<X>(sender: &signer) {
         coin::register<X>(sender);
+    }
+
+    // updates dex fee given a tier
+    public entry fun update_fee_tier<Tier, X, Y>(signer_ref: &signer) {
+        if (swap_utils_v2::sort_token_type<X, Y>()) {
+            assert!(swap_v2::is_pair_created<X, Y>(), errors::pair_not_created());
+            swap_v2::update_fee_tier<Tier, X, Y>(signer_ref);
+        } else {
+            assert!(swap_v2::is_pair_created<Y, X>(), errors::pair_not_created());
+            swap_v2::update_fee_tier<Tier, Y, X>(signer_ref);
+        }
     }
 }

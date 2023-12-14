@@ -212,7 +212,8 @@ module baptswap_v2::swap_v2 {
         assert!(type_info::type_of<CoinType>() == type_info::type_of<X>() || type_info::type_of<CoinType>() == type_info::type_of<Y>(), errors::coin_type_does_not_match_x_or_y());
         // assert sender is token owner
         assert!(deployer::is_coin_owner<CoinType>(sender), errors::not_owner());
-        // TODO: assert FeeOnTransferInfo<CoinType> is registered in the pair
+        // assert fee on transfer is registered
+        assert!(is_fee_on_transfer_registered<CoinType, X, Y>(), errors::fee_on_transfer_not_registered());
 
         let metadata = borrow_global_mut<TokenPairMetadata<X, Y>>(constants::get_resource_account_address());
 
@@ -231,8 +232,8 @@ module baptswap_v2::swap_v2 {
     ) acquires TokenPairMetadata {
         // assert sender is token owner
         assert!(deployer::is_coin_owner<CoinType>(sender), errors::not_owner());
-        // TODO: assert FeeOnTransferInfo<CoinType> is registered in the pair
-
+        // assert fee on transfer is registered
+        assert!(is_fee_on_transfer_registered<CoinType, X, Y>(), errors::fee_on_transfer_not_registered());
         let metadata = borrow_global_mut<TokenPairMetadata<X, Y>>(constants::get_resource_account_address());
         // if cointype = x
         if (type_info::type_of<CoinType>() == type_info::type_of<X>()) {
@@ -268,7 +269,8 @@ module baptswap_v2::swap_v2 {
         );
         // assert sender is token owner
         assert!(deployer::is_coin_owner<CoinType>(sender), errors::not_owner());
-        // TODO: assert FeeOnTransferInfo<CoinType> is registered in the pair
+        // assert fee on transfer is registered
+        assert!(is_fee_on_transfer_registered<CoinType, X, Y>(), errors::fee_on_transfer_not_registered());
 
         let metadata = borrow_global_mut<TokenPairMetadata<X, Y>>(constants::get_resource_account_address());
         // if cointype = x
@@ -479,9 +481,7 @@ module baptswap_v2::swap_v2 {
         // distribute fees 
         distribute_dex_fees<Y, X, Y>(sender, amount_out);
         // based on whether Y fee_on_transfer is registered
-        if (is_fee_on_transfer_registered<Y, X, Y>()) {
-            distribute_fee_on_transfer_fees<Y, X, Y>(sender, amount_out);
-        };
+        distribute_fee_on_transfer_fees<Y, X, Y>(sender, amount_out);
         amount_out
     }
 
@@ -514,9 +514,7 @@ module baptswap_v2::swap_v2 {
         // distribute fees 
         distribute_dex_fees<Y, X, Y>(sender, amount_out);
         // based on whether Y fee_on_transfer is registered
-        if (is_fee_on_transfer_registered<Y, X, Y>()) {
-            distribute_fee_on_transfer_fees<Y, X, Y>(sender, amount_out);
-        };
+        distribute_fee_on_transfer_fees<Y, X, Y>(sender, amount_out);
         amount_in
     }
 
@@ -545,9 +543,7 @@ module baptswap_v2::swap_v2 {
         // distribute fees 
         distribute_dex_fees<X, X, Y>(sender, amount_out);
         // based on whether X fee_on_transfer is registered
-        if (is_fee_on_transfer_registered<X, X, Y>()) {
-            distribute_fee_on_transfer_fees<X, X, Y>(sender, amount_out);
-        };
+        distribute_fee_on_transfer_fees<X, X, Y>(sender, amount_out);
         coin::destroy_zero(coins_y_out); // or others ways to drop `coins_y_out`
         amount_out
     }
@@ -566,9 +562,7 @@ module baptswap_v2::swap_v2 {
         // distribute fees 
         distribute_dex_fees<X, X, Y>(sender, amount_out);
         // based on whether Y fee_on_transfer is registered
-        if (is_fee_on_transfer_registered<X, X, Y>()) {
-            distribute_fee_on_transfer_fees<X, X, Y>(sender, amount_out);
-        };
+        distribute_fee_on_transfer_fees<X, X, Y>(sender, amount_out);
         amount_in
     }
 
@@ -650,12 +644,21 @@ module baptswap_v2::swap_v2 {
     #[view]
     // get team fee in a given pair
     public fun get_accumulated_team_fee<CoinType, X, Y>(): (u64, u64) acquires TokenPairMetadata {
-        let metadata = borrow_global<TokenPairMetadata<X, Y>>(constants::get_resource_account_address());
+        if (swap_utils_v2::sort_token_type<X, Y>()) {
+            let metadata = borrow_global<TokenPairMetadata<X, Y>>(constants::get_resource_account_address());
             if (type_info::type_of<CoinType>() == type_info::type_of<X>()) {
                 (coin::value(&metadata.team_balance_x.x), coin::value(&metadata.team_balance_x.y))
             } else {
                 (coin::value(&metadata.team_balance_y.x), coin::value(&metadata.team_balance_y.y))
             }
+        } else {
+            let metadata = borrow_global<TokenPairMetadata<Y, X>>(constants::get_resource_account_address());
+            if (type_info::type_of<CoinType>() == type_info::type_of<Y>()) {
+                (coin::value(&metadata.team_balance_x.x), coin::value(&metadata.team_balance_x.y))
+            } else {
+                (coin::value(&metadata.team_balance_y.x), coin::value(&metadata.team_balance_y.y))
+            }
+        }
     }
 
     // Obtain the LP token balance of `addr`.
@@ -722,7 +725,7 @@ module baptswap_v2::swap_v2 {
         (
             utils::calculate_amount(fee_on_transfer::get_liquidity_fee<CoinType>(), amount),
             utils::calculate_amount(fee_on_transfer::get_rewards_fee<CoinType>(), amount),
-            utils::calculate_amount(fee_on_transfer::get_team_fee<CoinType>(), amount),
+            utils::calculate_amount(fee_on_transfer::get_team_fee<CoinType>(), amount)
         )
     }
 
@@ -808,10 +811,6 @@ module baptswap_v2::swap_v2 {
     // used in swap functions to distribute fee_on_transfer fees
     // if x, fees are taken from amount_in. If y, fees are taken from amount_out
     fun distribute_fee_on_transfer_fees<CoinType, X, Y>(signer_ref: &signer, amount: u64) acquires TokenPairMetadata {
-        // if token_info cointype is x and is registered in the pair; distribute fees
-        let metadata = borrow_global_mut<TokenPairMetadata<X, Y>>(constants::get_resource_account_address());
-        let fee_on_transfer_x = metadata.fee_on_transfer_x;
-        let fee_on_transfer_y = metadata.fee_on_transfer_y;
         /*
             if cointype is x: 
             - liquidity: liquidity amount fee will not be extracted from x
@@ -822,10 +821,16 @@ module baptswap_v2::swap_v2 {
                 - amount of x (rate of x * amount to team fee) goes to team fee x
                 - amount of x (rate of y * amount to team fee) goes to team fee y
         */ 
-        if (type_info::type_of<CoinType>() == type_info::type_of<X>() && !option::is_none<FeeOnTransferInfo<X>>(&fee_on_transfer_x)) {
+        if (type_info::type_of<CoinType>() == type_info::type_of<X>()) {
             // calculate the fees 
-            let (liquidity_amount_x, x_rewards_amount_from_x_ratio, x_team_amount_from_x_ratio) = calculate_fee_on_transfer_amounts<X>(amount);
-            let (liquidity_amount_y, x_rewards_amount_from_y_ratio, x_team_amount_from_y_ratio) = calculate_fee_on_transfer_amounts<Y>(amount);
+            let (liquidity_amount_x, x_rewards_amount_from_x_ratio, x_team_amount_from_x_ratio) = if (is_fee_on_transfer_registered<X, X, Y>()) {
+                calculate_fee_on_transfer_amounts<X>(amount)
+            } else { (0u128, 0u128, 0u128) };
+            let (liquidity_amount_y, x_rewards_amount_from_y_ratio, x_team_amount_from_y_ratio) = if (is_fee_on_transfer_registered<Y, X, Y>()) {
+                calculate_fee_on_transfer_amounts<Y>(amount)
+            } else { (0u128, 0u128, 0u128) };
+
+            let metadata = borrow_global_mut<TokenPairMetadata<X, Y>>(constants::get_resource_account_address());
 
             // extract fees
             let liquidity_x_fee_coins = coin::withdraw<X>(signer_ref, ((liquidity_amount_x + liquidity_amount_y) as u64));
@@ -837,10 +842,12 @@ module baptswap_v2::swap_v2 {
             // liquidity
             coin::merge(&mut metadata.balance_x, liquidity_x_fee_coins);
             // rewards
-            if (metadata.rewards_fee > 0) {
+            if (stake::is_pool_created<X, Y>()) {
                 let rewards_coins_to_xy_pool = coin::withdraw<X>(signer_ref, (x_rewards_amount_from_x_ratio as u64));
-                let rewards_coins_to_yx_pool = coin::withdraw<X>(signer_ref, (x_rewards_amount_from_y_ratio as u64));
                 stake::distribute_rewards<X, Y>(rewards_coins_to_xy_pool, coin::zero<Y>());
+            };
+            if (stake::is_pool_created<Y, X>()) {
+                let rewards_coins_to_yx_pool = coin::withdraw<X>(signer_ref, (x_rewards_amount_from_y_ratio as u64));
                 stake::distribute_rewards<Y, X>(coin::zero<Y>(), rewards_coins_to_yx_pool);
             };
             // team
@@ -857,10 +864,16 @@ module baptswap_v2::swap_v2 {
                 - amount of y (rate of x * amount to team fee) goes to team fee x
                 - amount of y (rate of y * amount to team fee) goes to team fee y
         */ 
-        else if (type_info::type_of<CoinType>() == type_info::type_of<Y>() && !option::is_none<FeeOnTransferInfo<Y>>(&fee_on_transfer_y)) {
+        else if (type_info::type_of<CoinType>() == type_info::type_of<Y>()) {
             // calculate the fees
-            let (liquidity_amount_x, y_rewards_amount_from_x_ratio, y_team_amount_from_x_ratio) = calculate_fee_on_transfer_amounts<X>(amount);
-            let (liquidity_amount_y, y_rewards_amount_from_y_ratio, y_team_amount_from_y_ratio) = calculate_fee_on_transfer_amounts<Y>(amount);
+            let (liquidity_amount_x, y_rewards_amount_from_x_ratio, y_team_amount_from_x_ratio) = if (is_fee_on_transfer_registered<X, X, Y>()) {
+                calculate_fee_on_transfer_amounts<X>(amount)
+            } else { (0u128, 0u128, 0u128) };
+            let (liquidity_amount_y, y_rewards_amount_from_y_ratio, y_team_amount_from_y_ratio) = if (is_fee_on_transfer_registered<Y, X, Y>()) {
+                calculate_fee_on_transfer_amounts<Y>(amount)
+            } else { (0u128, 0u128, 0u128) };
+
+            let metadata = borrow_global_mut<TokenPairMetadata<X, Y>>(constants::get_resource_account_address());
 
             // extract fees
             let liquidity_y_fee_coins = coin::withdraw<Y>(signer_ref, ((liquidity_amount_x + liquidity_amount_y) as u64));
@@ -872,19 +885,71 @@ module baptswap_v2::swap_v2 {
             // liquidity
             coin::merge(&mut metadata.balance_y, liquidity_y_fee_coins);
             // rewards
-            if (metadata.rewards_fee > 0) {
+            if (stake::is_pool_created<X, Y>()) {
                 let rewards_coins_to_xy_pool = coin::withdraw<Y>(signer_ref, (y_rewards_amount_from_x_ratio as u64));
-                let rewards_coins_to_yx_pool = coin::withdraw<Y>(signer_ref, (y_rewards_amount_from_y_ratio as u64));
                 stake::distribute_rewards<X, Y>(coin::zero<X>(), rewards_coins_to_xy_pool);
+            };
+            if (stake::is_pool_created<Y, X>()) {
+                let rewards_coins_to_yx_pool = coin::withdraw<Y>(signer_ref, (y_rewards_amount_from_y_ratio as u64));
                 stake::distribute_rewards<Y, X>(rewards_coins_to_yx_pool, coin::zero<X>());
             };
             // team
             coin::merge(&mut metadata.team_balance_x.y, x_team_y_coins);
             coin::merge(&mut metadata.team_balance_y.y, y_team_y_coins);
-        } /*else { assert!(false, errors::internal()); }*/
+        }
     }
 
-    fun update_reserves<X, Y>() acquires TokenPairReserve, TokenPairMetadata {
+    // Update fee tier in a pair
+    public(friend) fun update_fee_tier<Tier, X, Y>(signer_ref: &signer) acquires TokenPairMetadata {
+        // assert signer is admin
+        assert!(signer::address_of(signer_ref) == admin::get_admin(), errors::not_admin());
+        // assert tier is valid
+        assert!(admin::is_valid_tier<Tier>(), errors::invalid_tier());
+        // update fees
+        // toggle off fee on transfer fees
+        if (is_fee_on_transfer_registered<X, X, Y>()) {
+            toggle_all_fees<X, X, Y>(signer_ref, false);
+        };
+        if (is_fee_on_transfer_registered<Y, X, Y>()) {
+            toggle_all_fees<Y, X, Y>(signer_ref, false);
+        };
+        // add new dex fees based on the tier
+        let metadata = borrow_global_mut<TokenPairMetadata<X, Y>>(constants::get_resource_account_address());
+        if (type_info::type_of<Tier>() == type_info::type_of<admin::Universal>()) {
+            // get the fees
+            let (liquidity_fee, treasury_fee) = admin::get_universal_tier_fees();
+            // update pair fees 
+            metadata.liquidity_fee = liquidity_fee;
+            metadata.treasury_fee = treasury_fee;
+        } else if (type_info::type_of<Tier>() == type_info::type_of<admin::PopularTraded>()) {
+            // get the fees
+            let (liquidity_fee, treasury_fee) = admin::get_popular_traded_tier_fees();
+            // update pair fees 
+            metadata.liquidity_fee = liquidity_fee;
+            metadata.treasury_fee = treasury_fee;
+        } else if (type_info::type_of<Tier>() == type_info::type_of<admin::Stable>()) {
+            // get the fees
+            let (liquidity_fee, treasury_fee) = admin::get_stable_tier_fees();
+            // update pair fees 
+            metadata.liquidity_fee = liquidity_fee;
+            metadata.treasury_fee = treasury_fee;
+        } else {
+            // get the fees
+            let (liquidity_fee, treasury_fee) = admin::get_very_stable_tier_fees();
+            // update pair fees 
+            metadata.liquidity_fee = liquidity_fee;
+            metadata.treasury_fee = treasury_fee;
+        };
+        // Toggle on fee on transfer fees
+        if (is_fee_on_transfer_registered<X, X, Y>()) {
+            toggle_all_fees<X, X, Y>(signer_ref, true);
+        };
+        if (is_fee_on_transfer_registered<Y, X, Y>()) {
+            toggle_all_fees<Y, X, Y>(signer_ref, true);
+        };
+    }
+
+    inline fun update_reserves<X, Y>() acquires TokenPairReserve, TokenPairMetadata {
         let reserves = borrow_global_mut<TokenPairReserve<X, Y>>(constants::get_resource_account_address());
         let (balance_x, balance_y) = token_balances<X, Y>();
         update(balance_x, balance_y, reserves);

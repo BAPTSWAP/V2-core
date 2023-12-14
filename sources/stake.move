@@ -49,7 +49,6 @@ module baptswap_v2::stake {
         sender: &signer,
         is_x_staked: bool
     ) {
-        // TODO assert coin type is either X or Y
         let resource_signer = admin::get_resource_signer();
         let precision_factor = math::pow(10u128, 12u8);
         // based on CoinType
@@ -58,7 +57,6 @@ module baptswap_v2::stake {
             // Assert initializer is the owner of either X or Y
             assert!(deployer::is_coin_owner<X>(sender), errors::not_owner());
             // Assert either of the fee_on_transfer is intialized 
-            // TODO: and != 0?
             assert!(fee_on_transfer::is_created<X>(), errors::fee_on_transfer_not_initialized());
             // Create the pool resource
             let resource_signer = admin::get_resource_signer();

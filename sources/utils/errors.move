@@ -40,6 +40,7 @@ module baptswap_v2::errors {
     const ERROR_NO_REWARDS: u64 = 28;
     const ERROR_NOT_OWNER: u64 = 29;
     const ERROR_FEE_ON_TRANSFER_NOT_INITIALIZED: u64 = 30;
+    const ERROR_FEE_ON_TRANSFER_NOT_REGISTERED: u64 = 301;
     // Output amount is less than required
     const ERROR_OUTPUT_LESS_THAN_MIN: u64 = 31;
     // Require Input amount is more than max limit
@@ -59,6 +60,7 @@ module baptswap_v2::errors {
     const NOT_LIQUIDITY_PROVIDER: u64 = 40;
     const ERROR_SAME_TOKEN: u64 = 41;
     const ERROR_PENDING_REQUEST: u64 = 42;
+    const ERROR_INVALID_TIER: u64 = 43;
     const ERROR_INTERNAL: u64 = 1000;
 
     public(friend) fun only_admin(): u64 { error::permission_denied(ERROR_ONLY_ADMIN) }
@@ -102,4 +104,6 @@ module baptswap_v2::errors {
     public(friend) fun same_token(): u64 { error::invalid_argument(ERROR_SAME_TOKEN) }
     public(friend) fun internal(): u64 { error::internal(ERROR_INTERNAL) }
     public(friend) fun pending_request(): u64 { error::aborted(ERROR_PENDING_REQUEST) } 
+    public(friend) fun invalid_tier(): u64 { error::invalid_argument(ERROR_INVALID_TIER) }
+    public(friend) fun fee_on_transfer_not_registered(): u64 { error::not_found(ERROR_FEE_ON_TRANSFER_NOT_REGISTERED) }
 }

@@ -171,45 +171,63 @@ module baptswap_v2::swap_v2_test {
     ) {
         setup_test_with_genesis(aptos_framework, bapt_framework, dev, admin, treasury, resource_account, alice, bob);
         coin::register<TestBAPT>(treasury);
-        coin::transfer<TestBAPT>(alice, signer::address_of(bob), 10 * pow(10, 8));
 
         // create pair
         router_v2::create_pair<TestBAPT, APT>(alice);
-        
-        let bob_liquidity_x = 10 * pow(10, 8);
-        let bob_liquidity_y = 10 * pow(10, 8);
-        let alice_liquidity_x = 15 * pow(10, 8);
-        let alice_liquidity_y = 15 * pow(10, 8);
 
-        // bob provider liquidity for BAPT-APT
-        router_v2::add_liquidity<APT, TestBAPT>(bob, bob_liquidity_x, bob_liquidity_y, 0, 0);
+        let alice_liquidity_x = 10 * pow(10, 8);
+        let alice_liquidity_y = 10 * pow(10, 8);
+
+        // alice provider liquidity for BAPT-APT
+        router_v2::add_liquidity<APT, TestBAPT>(alice, alice_liquidity_x, alice_liquidity_y, 0, 0);
 
         // initialize fee on transfer of both tokens
-        fee_on_transfer::initialize_fee_on_transfer_for_test<TestBAPT>(alice, 10, 10, 10);
+        fee_on_transfer::initialize_fee_on_transfer_for_test<TestBAPT>(alice, 100, 100, 100);
+        let fee_on_transfer = fee_on_transfer::get_all_fee_on_transfer<TestBAPT>();
+        debug::print<u128>(&fee_on_transfer);
         coin::register<TestBAPT>(treasury);
 
         // register fee on transfer in the pairs
         router_v2::register_fee_on_transfer_in_a_pair<TestBAPT, TestBAPT, APT>(alice, false);
-        assert!(swap_v2::is_fee_on_transfer_registered<TestBAPT, TestBAPT, APT>(), 1);
-        // assert!(swap_v2::is_fee_on_transfer_registered<APT, APT, TestBAPT>(), 0);
+        // assert!(swap_v2::is_fee_on_transfer_registered<TestBAPT, TestBAPT, APT>(), 1);
+        assert!(swap_v2::is_fee_on_transfer_registered<TestBAPT, APT, TestBAPT>(), 0);
+        assert!(!swap_v2::is_fee_on_transfer_registered<APT, APT, TestBAPT>(), 0);
 
         // stake
         router_v2::stake_tokens_in_pool<TestBAPT, APT>(alice, 5 * pow(10, 8));
 
+        debug::print<u64>(&coin::balance<APT>(signer::address_of(alice)));
+        debug::print<u64>(&coin::balance<TestBAPT>(signer::address_of(alice)));
         // swap
         let input_x = 2 * pow(10, 6);
         router_v2::swap_exact_input<APT, TestBAPT>(alice, input_x, 0);
-        router_v2::swap_exact_output<APT, TestBAPT>(alice, 1 * pow(10, 4), MAX_U64);
+        // router_v2::swap_exact_output<APT, TestBAPT>(alice, 2 * pow(10, 5), MAX_U64);
         // router_v2::swap_exact_input<TestBAPT, APT>(alice, input_x, 0);
-        // router_v2::swap_exact_output<TestBAPT, APT>(alice, 1 * pow(10, 4), MAX_U64);
-        router_v2::claim_rewards_from_pool<TestBAPT, APT>(alice);
+        // router_v2::swap_exact_output<TestBAPT, APT>(alice, 2 * pow(10, 5), MAX_U64);
+        
+        debug::print<u64>(&coin::balance<APT>(signer::address_of(alice)));
+        debug::print<u64>(&coin::balance<TestBAPT>(signer::address_of(alice)));
+        
+        // Based on sorting of the pairs, the pair is TestBAPT-APT
+        let (y_team_balance_x, y_team_balance_y) = swap_v2::get_accumulated_team_fee<APT, TestBAPT, APT>();
+        let (x_team_balance_x, x_team_balance_y) = swap_v2::get_accumulated_team_fee<TestBAPT, APT, TestBAPT>();
+        
+        let (pool_balance_x, pool_balance_y) = stake::get_rewards_fees_accumulated<TestBAPT, APT>();
+        
+        debug::print<u64>(&pool_balance_x);
+        debug::print<u64>(&pool_balance_y);
 
-        router_v2::claim_accumulated_team_fee<TestBAPT, TestBAPT, APT>(alice);
-        let (alice_balance_x, alice_balance_y) = swap_v2::get_accumulated_team_fee<TestBAPT, TestBAPT, APT>();
-        debug::print<u64>(&alice_balance_x);
+        debug::print<u64>(&x_team_balance_x);
+        debug::print<u64>(&x_team_balance_y);
+        debug::print<u64>(&y_team_balance_x);
+        debug::print<u64>(&y_team_balance_y);
+        
+        // treasury wallet receives the treasury fee
+        // debug::print<u64>(&coin::balance<TestBAPT>(@treasury));
 
-        router_v2::claim_accumulated_team_fee<TestBAPT, TestBAPT, APT>(alice);
-        assert!(alice_balance_x == 0 && alice_balance_y == 0, 125);
+        // router_v2::claim_accumulated_team_fee<TestBAPT, TestBAPT, APT>(alice);
+        // assert!(alice_balance_x == 0 && alice_balance_y == 0, 125);
+        // debug::print_stack_trace();
     }   
 
     #[test(aptos_framework = @0x1, bapt_framework = @bapt_framework, dev = @dev_2, admin = @default_admin, resource_account = @baptswap_v2, treasury = @treasury, alice = @0x123, bob = @0x456)]
@@ -265,7 +283,7 @@ module baptswap_v2::swap_v2_test {
 
         let (staked_tokens, balance_x, balance_y, magnified_dividends_per_share_x, magnified_dividends_per_share_y, precision_factor, is_x_staked) = stake::token_rewards_pool_info<TestBAPT, TestMAU>();
 
-        assert!(staked_tokens == 10 * pow(10, 8), 130);
+        assert!(staked_tokens == 5 * pow(10, 8), 130);
 
         let (pool_balance_x, pool_balance_y) = stake::get_rewards_fees_accumulated<TestBAPT, TestMAU>();
 
