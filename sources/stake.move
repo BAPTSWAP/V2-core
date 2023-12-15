@@ -206,6 +206,10 @@ module baptswap_v2::stake {
                 let user_info = borrow_global_mut<RewardsPoolUserInfo<X, Y, X>>(account_address);
                 utils::transfer_out<X>(&mut user_info.staked_tokens, sender, amount);
                 pool_info.staked_tokens = pool_info.staked_tokens - amount;
+                // if staked tokens is 0, initialize magnified_dividends_per_shares to 0
+                if (pool_info.staked_tokens == 0) {
+                    reset_magnified_dividends_per_share<X, Y>(pool_info);
+                };
             };
             // Calculate and update user corrections
             calculate_and_update_user_corrections<X, Y, X>(sender, amount, pool_info);
@@ -216,11 +220,20 @@ module baptswap_v2::stake {
                 let user_info = borrow_global_mut<RewardsPoolUserInfo<X, Y, Y>>(account_address);
                 utils::transfer_out<Y>(&mut user_info.staked_tokens, sender, amount);
                 pool_info.staked_tokens = pool_info.staked_tokens - amount;
+                // if staked tokens is 0, initialize magnified_dividends_per_shares to 0
+                if (pool_info.staked_tokens == 0) {
+                    reset_magnified_dividends_per_share<X, Y>(pool_info);
+                };
             };
             // Calculate and update user corrections
             calculate_and_update_user_corrections<X, Y, Y>(sender, amount, pool_info);
         }
-    }    
+    }  
+
+    inline fun reset_magnified_dividends_per_share<X, Y>(pool_info: &mut TokenPairRewardsPool<X, Y>) {
+        pool_info.magnified_dividends_per_share_x = 0;
+        pool_info.magnified_dividends_per_share_y = 0;
+    }
 
     // claim rewards
     public(friend) entry fun claim_rewards<X, Y>(sender: &signer) acquires TokenPairRewardsPool, RewardsPoolUserInfo {

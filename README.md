@@ -32,7 +32,7 @@
 | `SV2-9` |  ✅  | [1f71ddc](https://github.com/BAPTSWAP/V2-core/commit/1f71ddc4ae6037a90e6a1aa590748f50479f4e7b) |   
 | `SV2-10` |  ✅  | [d85d0f4](https://github.com/BAPTSWAP/V2-core/commit/d85d0f437f0d6bf92e63f805b91cb314547419ff) | Removed; fees are managed by the existing swap function |✅
 | `SV2-11` |  ✅  |  |  |
-| `SV2-12` |  ❌  |  |  |
+| `SV2-12` |  ✅  |  |  |
 | `SV2-13` |  ✅  |  |  |
 | `SV2-14` |  ✅  | [78ab62f](https://github.com/BAPTSWAP/V2-core/commit/78ab62ffa4eed8454cc62b21dcdc734738b9f242) | |
 | `SV2-15` |  ✅  | [07ad85](https://github.com/BAPTSWAP/V2-core/commit/07ad85eb5436c62c3f90cf36753c637b49834fec) | |
