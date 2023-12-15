@@ -103,18 +103,21 @@ module baptswap_v2::swap_v2 {
     // Events
     // ------
 
+    #[event]
     struct PairCreatedEvent has drop, store {
         user: address,
         token_x: string::String,
         token_y: string::String
     }
 
+    #[event]
     struct PairEventHolder<phantom X, phantom Y> has key {
         add_liquidity: event::EventHandle<AddLiquidityEvent<X, Y>>,
         remove_liquidity: event::EventHandle<RemoveLiquidityEvent<X, Y>>,
         swap: event::EventHandle<SwapEvent<X, Y>>
     }
 
+    #[event]
     struct AddLiquidityEvent<phantom X, phantom Y> has drop, store {
         user: address,
         amount_x: u64,
@@ -122,6 +125,7 @@ module baptswap_v2::swap_v2 {
         liquidity: u64
     }
 
+    #[event]
     struct RemoveLiquidityEvent<phantom X, phantom Y> has drop, store {
         user: address,
         liquidity: u64,
@@ -129,6 +133,7 @@ module baptswap_v2::swap_v2 {
         amount_y: u64
     }
 
+    #[event]
     struct SwapEvent<phantom X, phantom Y> has drop, store {
         user: address,
         amount_x_in: u64,
@@ -178,12 +183,8 @@ module baptswap_v2::swap_v2 {
         );
     }
 
-    public fun pair_created_event(
-        user: address,
-        token_x: string::String,
-        token_y: string::String
-    ): PairCreatedEvent {
-        PairCreatedEvent { user, token_x, token_y }
+    public fun emit_pair_created_event(user: address, token_x: string::String, token_y: string::String) { 
+        event::emit<PairCreatedEvent>(PairCreatedEvent { user, token_x, token_y }); 
     }
 
     // ---------------
@@ -199,8 +200,6 @@ module baptswap_v2::swap_v2 {
         toggle_liquidity_fee<CoinType, X, Y>(sender, activate);
         toggle_team_fee<CoinType, X, Y>(sender, activate);
         toggle_rewards_fee<CoinType, X, Y>(sender, activate);
-
-        // TODO: events
     }
 
     // Toggle liquidity fee
@@ -429,7 +428,7 @@ module baptswap_v2::swap_v2 {
         let token_x = type_info::type_name<X>();
         let token_y = type_info::type_name<Y>();
 
-        pair_created_event(sender_addr, token_x, token_y);
+        emit_pair_created_event(sender_addr, token_x, token_y);
 
         // create LP CoinStore , which is needed as a lock for minimum_liquidity
         register_lp<X, Y>(&resource_signer);
@@ -492,7 +491,7 @@ module baptswap_v2::swap_v2 {
         let amount_in = coin::value<X>(&coins_in);
         deposit_x<X, Y>(coins_in);
         let (rin, rout, _) = token_reserves<X, Y>();
-        let amount_out = swap_utils_v2::get_amount_out(amount_in, rin, rout);
+        let amount_out = swap_utils_v2::get_amount_out(amount_in, rin, rout, liquidity_fee<X, Y>());
         let (coins_x_out, coins_y_out) = swap<X, Y>(0, amount_out);
         // update reserves
         update_reserves<X, Y>();
@@ -584,7 +583,10 @@ module baptswap_v2::swap_v2 {
         let amount_in = coin::value<Y>(&coins_in);
         deposit_y<X, Y>(coins_in);
         let (rout, rin, _) = token_reserves<X, Y>();
-        let amount_out = swap_utils_v2::get_amount_out(amount_in, rin, rout);  
+        // calulate total liquidity fee
+        let metadata = borrow_global<TokenPairMetadata<X, Y>>(constants::get_resource_account_address());
+        let liquidity_fee = metadata.liquidity_fee;
+        let amount_out = swap_utils_v2::get_amount_out(amount_in, rin, rout, liquidity_fee);  
         let (coins_x_out, coins_y_out) = swap<X, Y>(amount_out, 0);
         // update reserves
         update_reserves<X, Y>();
@@ -608,6 +610,13 @@ module baptswap_v2::swap_v2 {
             &coin::supply<LPToken<X, Y>>(),
             0u128
         )
+    }
+
+    #[view]
+    // Get the current liquidity fee for a token pair
+    public fun liquidity_fee<X, Y>(): u128 acquires TokenPairMetadata {
+        let metadata = borrow_global<TokenPairMetadata<X, Y>>(constants::get_resource_account_address());
+        metadata.liquidity_fee
     }
 
     #[view]
@@ -783,25 +792,25 @@ module baptswap_v2::swap_v2 {
     }
 
     // used in swap functions to distribute DEX fees
-    fun distribute_dex_fees<CoinType, X, Y>(signer_ref: &signer, amount: u64) acquires TokenPairMetadata {
+    fun distribute_dex_fees<CoinType, X, Y>(signer_ref: &signer, amount: u64) {
         // based on cointype
         if (type_info::type_of<CoinType>() == type_info::type_of<X>()) {
             // distribute DEX fees to dex owner;
             let (amount_to_liquidity, amount_to_treasury) = calculate_dex_fees_amounts<X>(amount);
-            let metadata = borrow_global_mut<TokenPairMetadata<X, Y>>(constants::get_resource_account_address());
+            // let metadata = borrow_global_mut<TokenPairMetadata<X, Y>>(constants::get_resource_account_address());
             // liquidity
-            let liquidity_fee_coins = coin::withdraw<X>(signer_ref, (amount_to_liquidity as u64));
-            coin::merge(&mut metadata.balance_x, liquidity_fee_coins);
+            // let liquidity_fee_coins = coin::withdraw<X>(signer_ref, (amount_to_liquidity as u64));
+            // coin::merge(&mut metadata.balance_x, liquidity_fee_coins);
             // treasury 
             let treasury_fee_coins = coin::withdraw<X>(signer_ref, (amount_to_treasury as u64));
             coin::deposit<X>(admin::get_treasury_address(), treasury_fee_coins);
         } else if (type_info::type_of<CoinType>() == type_info::type_of<Y>()) {
             // distribute DEX fees to dex owner;
             let (amount_to_liquidity, amount_to_treasury) = calculate_dex_fees_amounts<Y>(amount);
-            let metadata = borrow_global_mut<TokenPairMetadata<X, Y>>(constants::get_resource_account_address());
+            // let metadata = borrow_global_mut<TokenPairMetadata<X, Y>>(constants::get_resource_account_address());
             // liquidity
-            let liquidity_fee_coins = coin::withdraw<Y>(signer_ref, (amount_to_liquidity as u64));
-            coin::merge(&mut metadata.balance_y, liquidity_fee_coins);
+            // let liquidity_fee_coins = coin::withdraw<Y>(signer_ref, (amount_to_liquidity as u64));
+            // coin::merge(&mut metadata.balance_y, liquidity_fee_coins);
             // treasury 
             let treasury_fee_coins = coin::withdraw<Y>(signer_ref, (amount_to_treasury as u64));
             coin::deposit<Y>(admin::get_treasury_address(), treasury_fee_coins);
@@ -833,14 +842,14 @@ module baptswap_v2::swap_v2 {
             let metadata = borrow_global_mut<TokenPairMetadata<X, Y>>(constants::get_resource_account_address());
 
             // extract fees
-            let liquidity_x_fee_coins = coin::withdraw<X>(signer_ref, ((liquidity_amount_x + liquidity_amount_y) as u64));
+            // let liquidity_x_fee_coins = coin::withdraw<X>(signer_ref, ((liquidity_amount_x + liquidity_amount_y) as u64));
 
             let x_team_x_coins = coin::withdraw<X>(signer_ref, (x_team_amount_from_x_ratio as u64));
             let y_team_x_coins = coin::withdraw<X>(signer_ref, (x_team_amount_from_y_ratio as u64));
 
             // distribute fees
             // liquidity
-            coin::merge(&mut metadata.balance_x, liquidity_x_fee_coins);
+            // coin::merge(&mut metadata.balance_x, liquidity_x_fee_coins);
             // rewards
             if (stake::is_pool_created<X, Y>()) {
                 let rewards_coins_to_xy_pool = coin::withdraw<X>(signer_ref, (x_rewards_amount_from_x_ratio as u64));
@@ -876,14 +885,14 @@ module baptswap_v2::swap_v2 {
             let metadata = borrow_global_mut<TokenPairMetadata<X, Y>>(constants::get_resource_account_address());
 
             // extract fees
-            let liquidity_y_fee_coins = coin::withdraw<Y>(signer_ref, ((liquidity_amount_x + liquidity_amount_y) as u64));
+            // let liquidity_y_fee_coins = coin::withdraw<Y>(signer_ref, ((liquidity_amount_x + liquidity_amount_y) as u64));
 
             let x_team_y_coins = coin::withdraw<Y>(signer_ref, (y_team_amount_from_x_ratio as u64));
             let y_team_y_coins = coin::withdraw<Y>(signer_ref, (y_team_amount_from_y_ratio as u64));
 
             // distribute fees
             // liquidity
-            coin::merge(&mut metadata.balance_y, liquidity_y_fee_coins);
+            // coin::merge(&mut metadata.balance_y, liquidity_y_fee_coins);
             // rewards
             if (stake::is_pool_created<X, Y>()) {
                 let rewards_coins_to_xy_pool = coin::withdraw<Y>(signer_ref, (y_rewards_amount_from_x_ratio as u64));
@@ -967,6 +976,10 @@ module baptswap_v2::swap_v2 {
 
         let metadata = borrow_global_mut<TokenPairMetadata<X, Y>>(constants::get_resource_account_address());
 
+        let liquidity_fee = metadata.liquidity_fee;
+
+        let fee_denominator = liquidity_fee;
+
         let coins_x_out = coin::zero<X>();
         let coins_y_out = coin::zero<Y>();
         if (amount_x_out > 0) coin::merge(&mut coins_x_out, extract_x(amount_x_out, metadata));
@@ -983,8 +996,8 @@ module baptswap_v2::swap_v2 {
         assert!(amount_x_in > 0 || amount_y_in > 0, errors::insufficient_input_amount());
 
         let prec = (constants::get_precision() as u128);
-        let balance_x_adjusted = (balance_x as u128) * prec - (amount_x_in as u128) * 25u128;
-        let balance_y_adjusted = (balance_y as u128) * prec - (amount_y_in as u128) * 25u128;
+        let balance_x_adjusted = (balance_x as u128) * prec - (amount_x_in as u128) * fee_denominator;
+        let balance_y_adjusted = (balance_y as u128) * prec - (amount_y_in as u128) * fee_denominator;
         let reserve_x_adjusted = (reserves.reserve_x as u128) * prec;
         let reserve_y_adjusted = (reserves.reserve_y as u128) * prec;
 
@@ -1027,11 +1040,8 @@ module baptswap_v2::swap_v2 {
             liquidity
         };
 
-
         let lp = mint_lp<X, Y>((liquidity as u64), &metadata.mint_cap);
-
         update<X, Y>(balance_x, balance_y, reserves);
-
         metadata.k_last = (reserves.reserve_x as u128) * (reserves.reserve_y as u128);
 
         (lp)
@@ -1135,5 +1145,81 @@ module baptswap_v2::swap_v2 {
             assert!(coin::value<Y>(&metadata.team_balance_y.y) == amount, errors::insufficient_amount());
             return coin::extract(&mut metadata.team_balance_y.y, amount)
         }
+    }
+
+    #[test_only]
+    public fun create_pair_internal_test<X, Y>(
+        sender: &signer,
+    ) {
+        assert!(!is_pair_created<X, Y>(), errors::already_initialized());
+
+        let sender_addr = signer::address_of(sender);
+        let resource_signer = admin::get_resource_signer();
+
+        let lp_name: string::String = string::utf8(b"BaptswapV2-");
+        let name_x = coin::symbol<X>();
+        let name_y = coin::symbol<Y>();
+        string::append(&mut lp_name, name_x);
+        string::append_utf8(&mut lp_name, b"/");
+        string::append(&mut lp_name, name_y);
+        string::append_utf8(&mut lp_name, b"-LP");
+        if (string::length(&lp_name) > errors::max_coin_name_length()) {
+            lp_name = string::utf8(b"BaptSwap LPs");
+        };
+
+        // now we init the LP token
+        let (burn_cap, freeze_cap, mint_cap) = coin::initialize<LPToken<X, Y>>(
+            &resource_signer,
+            lp_name,
+            string::utf8(b"BAPT-LP"),
+            8,
+            true
+        );
+
+        move_to<TokenPairReserve<X, Y>>(
+            &resource_signer,
+            TokenPairReserve {
+                reserve_x: 0,
+                reserve_y: 0,
+                block_timestamp_last: 0
+            }
+        );
+
+        move_to<TokenPairMetadata<X, Y>>(
+            &resource_signer,
+            TokenPairMetadata {
+                creator: sender_addr,
+                k_last: 0,
+                fee_on_transfer_x: option::none<FeeOnTransferInfo<X>>(),
+                fee_on_transfer_y: option::none<FeeOnTransferInfo<Y>>(),
+                liquidity_fee: 0,
+                treasury_fee: 0,
+                team_fee: 0,
+                rewards_fee: 0,
+                balance_x: coin::zero<X>(),
+                balance_y: coin::zero<Y>(),
+                team_balance_x: TeamBalance { x: coin::zero<X>(), y: coin::zero<Y>() },
+                team_balance_y: TeamBalance { x: coin::zero<X>(), y: coin::zero<Y>() },
+                burn_cap,
+                freeze_cap,
+                mint_cap
+            }
+        );
+
+        move_to<PairEventHolder<X, Y>>(
+            &resource_signer,
+            PairEventHolder {
+                add_liquidity: account::new_event_handle<AddLiquidityEvent<X, Y>>(&resource_signer),
+                remove_liquidity: account::new_event_handle<RemoveLiquidityEvent<X, Y>>(&resource_signer),
+                swap: account::new_event_handle<SwapEvent<X, Y>>(&resource_signer)
+            }
+        );
+
+        // pair created event
+        let token_x = type_info::type_name<X>();
+        let token_y = type_info::type_name<Y>();
+
+        // create LP CoinStore , which is needed as a lock for minimum_liquidity
+        register_lp<X, Y>(&resource_signer);
     }
 }

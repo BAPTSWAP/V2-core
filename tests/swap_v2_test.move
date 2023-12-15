@@ -36,7 +36,7 @@ module baptswap_v2::swap_v2_test {
         account::create_account_for_test(signer::address_of(dev));
         account::create_account_for_test(signer::address_of(admin));
         account::create_account_for_test(signer::address_of(treasury));
-        resource_account::create_resource_account(dev, b"baptswap_v2", x"");
+        resource_account::create_resource_account(dev, b"aptoolsbapt", x"");
         admin::init_test(resource_account);
         account::create_account_for_test(signer::address_of(bapt_framework));
         coin::register<APT>(bapt_framework);    // for the deployer
@@ -93,10 +93,10 @@ module baptswap_v2::swap_v2_test {
         coin::register<TestMAU>(treasury);
 
         // create pair
-        router_v2::create_pair<TestBAPT, TestMAU>(alice);
+        router_v2::create_pair_test<TestBAPT, TestMAU>(alice);
         // these are needed for transferring some of the fees since we want them in APT
-        router_v2::create_pair<TestBAPT, APT>(alice);
-        router_v2::create_pair<TestMAU, APT>(alice);
+        router_v2::create_pair_test<TestBAPT, APT>(alice);
+        router_v2::create_pair_test<TestMAU, APT>(alice);
 
         let bob_liquidity_x = 10 * pow(10, 8);
         let bob_liquidity_y = 10 * pow(10, 8);
@@ -137,10 +137,10 @@ module baptswap_v2::swap_v2_test {
         coin::register<TestMAU>(treasury);
 
         // create pair
-        router_v2::create_pair<TestBAPT, TestMAU>(alice);
+        router_v2::create_pair_test<TestBAPT, TestMAU>(alice);
         // these are needed for transferring some of the fees since we want them in APT
-        router_v2::create_pair<TestBAPT, APT>(alice);
-        router_v2::create_pair<TestMAU, APT>(alice);
+        router_v2::create_pair_test<TestBAPT, APT>(alice);
+        router_v2::create_pair_test<TestMAU, APT>(alice);
 
         let bob_liquidity_x = 10 * pow(10, 8);
         let bob_liquidity_y = 10 * pow(10, 8);
@@ -173,7 +173,7 @@ module baptswap_v2::swap_v2_test {
         coin::register<TestBAPT>(treasury);
 
         // create pair
-        router_v2::create_pair<TestBAPT, APT>(alice);
+        router_v2::create_pair_test<TestBAPT, APT>(alice);
 
         let alice_liquidity_x = 10 * pow(10, 8);
         let alice_liquidity_y = 10 * pow(10, 8);
@@ -188,7 +188,7 @@ module baptswap_v2::swap_v2_test {
         coin::register<TestBAPT>(treasury);
 
         // register fee on transfer in the pairs
-        router_v2::register_fee_on_transfer_in_a_pair<TestBAPT, TestBAPT, APT>(alice, false);
+        router_v2::register_fee_on_transfer_in_a_pair<TestBAPT, TestBAPT, APT>(alice);
         // assert!(swap_v2::is_fee_on_transfer_registered<TestBAPT, TestBAPT, APT>(), 1);
         assert!(swap_v2::is_fee_on_transfer_registered<TestBAPT, APT, TestBAPT>(), 0);
         assert!(!swap_v2::is_fee_on_transfer_registered<APT, APT, TestBAPT>(), 0);
@@ -248,9 +248,9 @@ module baptswap_v2::swap_v2_test {
         coin::transfer<TestMAU>(bob, signer::address_of(alice), 10 * pow(10, 8));
 
         // create pair
-        router_v2::create_pair<TestBAPT, TestMAU>(alice);
-        router_v2::create_pair<TestBAPT, APT>(alice);
-        router_v2::create_pair<TestMAU, APT>(alice);
+        router_v2::create_pair_test<TestBAPT, TestMAU>(alice);
+        router_v2::create_pair_test<TestBAPT, APT>(alice);
+        router_v2::create_pair_test<TestMAU, APT>(alice);
 
         let bob_liquidity_x = 10 * pow(10, 8);
         let bob_liquidity_y = 10 * pow(10, 8);
@@ -265,8 +265,8 @@ module baptswap_v2::swap_v2_test {
         fee_on_transfer::initialize_fee_on_transfer_for_test<TestMAU>(bob, 35, 55, 15);
 
         // register fee on transfer in the pairs
-        router_v2::register_fee_on_transfer_in_a_pair<TestBAPT, TestBAPT, TestMAU>(alice, false);
-        router_v2::register_fee_on_transfer_in_a_pair<TestMAU, TestBAPT, TestMAU>(bob, false);
+        router_v2::register_fee_on_transfer_in_a_pair<TestBAPT, TestBAPT, TestMAU>(alice);
+        router_v2::register_fee_on_transfer_in_a_pair<TestMAU, TestBAPT, TestMAU>(bob);
 
         // rewards pool
         let response = stake::is_pool_created<TestBAPT, TestMAU>();
@@ -368,16 +368,15 @@ module baptswap_v2::swap_v2_test {
         coin::register<TestMAU>(treasury);
 
         // create pair
-        router_v2::create_pair<TestBAPT, TestMAU>(alice);
+        router_v2::create_pair_test<TestBAPT, TestMAU>(alice);
 
         // initialize fee on transfer of both tokens
         fee_on_transfer::initialize_fee_on_transfer_for_test<TestBAPT>(alice, 0, 100, 100);
         fee_on_transfer::initialize_fee_on_transfer_for_test<TestMAU>(bob, 0, 200, 200);
 
         // register fee on transfer in the pairs
-        router_v2::register_fee_on_transfer_in_a_pair<TestBAPT, TestBAPT, TestMAU>(alice, false);
-        router_v2::register_fee_on_transfer_in_a_pair<TestMAU, TestBAPT, TestMAU>(bob, false);
-
+        router_v2::register_fee_on_transfer_in_a_pair<TestBAPT, TestBAPT, TestMAU>(alice);
+        router_v2::register_fee_on_transfer_in_a_pair<TestMAU, TestBAPT, TestMAU>(bob);
 
         let bob_liquidity_x = 10 * pow(10, 8);
         let bob_liquidity_y = 10 * pow(10, 8);

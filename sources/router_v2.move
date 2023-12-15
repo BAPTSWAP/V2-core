@@ -28,13 +28,13 @@ module baptswap_v2::router_v2 {
     }
 
     // Add fee on transfer to a pair; callable only by owners of X or Y
-    public entry fun register_fee_on_transfer_in_a_pair<CoinType, X, Y>(sender: &signer, is_x_staked: bool) {
+    public entry fun register_fee_on_transfer_in_a_pair<CoinType, X, Y>(sender: &signer) {
         if (swap_utils_v2::sort_token_type<X, Y>()) {
             swap_v2::add_fee_on_transfer_in_pair<CoinType, X, Y>(sender);
-            stake::create_pool<CoinType, X, Y>(sender, is_x_staked);
+            stake::create_pool<CoinType, X, Y>(sender, true);
         } else {
             swap_v2::add_fee_on_transfer_in_pair<CoinType, Y, X>(sender);
-            stake::create_pool<CoinType, Y, X>(sender, is_x_staked);
+            stake::create_pool<CoinType, Y, X>(sender, true);
         }
     }
 
@@ -249,12 +249,12 @@ module baptswap_v2::router_v2 {
         let x_in = if (swap_utils_v2::sort_token_type<X, Y>()) {
             assert!(swap_v2::is_pair_created<X, Y>(), errors::pair_not_created());
             let (rin, rout, _) = swap_v2::token_reserves<X, Y>();
-            let amount_in = swap_utils_v2::get_amount_in(y_out, rin, rout);
+            let amount_in = swap_utils_v2::get_amount_in(y_out, rin, rout, swap_v2::liquidity_fee<X, Y>());
             swap_v2::swap_x_to_exact_y<X, Y>(sender, amount_in, y_out, signer::address_of(sender))
         } else {
             assert!(swap_v2::is_pair_created<Y, X>(), errors::pair_not_created());
             let (rout, rin, _) = swap_v2::token_reserves<Y, X>();
-            let amount_in = swap_utils_v2::get_amount_in(y_out, rin, rout);
+            let amount_in = swap_utils_v2::get_amount_in(y_out, rin, rout, swap_v2::liquidity_fee<Y, X>());
             swap_v2::swap_y_to_exact_x<Y, X>(sender, amount_in, y_out, signer::address_of(sender))
         };
         assert!(x_in <= x_max_in, errors::input_more_than_max());
@@ -292,10 +292,10 @@ module baptswap_v2::router_v2 {
     fun get_amount_in_internal<X, Y>(is_x_to_y:bool, y_out_amount: u64): u64 {
         if (is_x_to_y) {
             let (rin, rout, _) = swap_v2::token_reserves<X, Y>();
-            swap_utils_v2::get_amount_in(y_out_amount, rin, rout)
+            swap_utils_v2::get_amount_in(y_out_amount, rin, rout, swap_v2::liquidity_fee<X, Y>())
         } else {
             let (rout, rin, _) = swap_v2::token_reserves<Y, X>();
-            swap_utils_v2::get_amount_in(y_out_amount, rin, rout)
+            swap_utils_v2::get_amount_in(y_out_amount, rin, rout, swap_v2::liquidity_fee<Y, X>())
         }
     } 
 
@@ -321,6 +321,17 @@ module baptswap_v2::router_v2 {
         } else {
             assert!(swap_v2::is_pair_created<Y, X>(), errors::pair_not_created());
             swap_v2::update_fee_tier<Tier, Y, X>(signer_ref);
+        }
+    }
+
+    #[test_only]
+    public entry fun create_pair_test<X, Y>(
+        sender: &signer,
+    ) {
+        if (swap_utils_v2::sort_token_type<X, Y>()) {
+            swap_v2::create_pair_internal_test<X, Y>(sender);
+        } else {
+            swap_v2::create_pair_internal_test<Y, X>(sender);
         }
     }
 }

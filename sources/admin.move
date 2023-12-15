@@ -1,8 +1,5 @@
 /*
-
-    TODO: 
-    - refactor: treasury_fee_modifier -> treasury_fee
-    - come up with a better name for the module
+    This module is responsible for managing the admin, treasury addresses, and the dex fees.
 */
 
 module baptswap_v2::admin {
@@ -205,7 +202,7 @@ module baptswap_v2::admin {
         assert!(smart_table::length(&borrow_global_mut<Pending<Treasury>>(constants::get_resource_account_address()).table) == 0, errors::pending_request());
         // assert signer is the admin
         assert!(signer::address_of(signer_ref) == get_admin(), errors::not_admin());
-        // assert receiver_addr is not the admin
+        // assert receiver_addr is not the treasury address
         assert!(receiver_addr != get_treasury_address(), errors::same_address());
         // create a new table entry
         smart_table::add<Treasury, address>(&mut borrow_global_mut<Pending<Treasury>>(constants::get_resource_account_address()).table, Treasury {}, receiver_addr);
