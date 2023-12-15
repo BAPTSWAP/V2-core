@@ -133,8 +133,8 @@ module baptswap_v2::swap_v2_test {
 
         coin::register<TestMAU>(alice);
         coin::register<TestBAPT>(bob);
-        coin::register<TestBAPT>(treasury);
-        coin::register<TestMAU>(treasury);
+        // coin::register<TestBAPT>(treasury);
+        // coin::register<TestMAU>(treasury);
 
         // create pair
         router_v2::create_pair_test<TestBAPT, TestMAU>(alice);

@@ -26,6 +26,7 @@ module baptswap_v2::swap_v2 {
     // use aptos_std::debug;
     use aptos_std::type_info;
 
+    use aptos_framework::aptos_account;
     use aptos_framework::coin::{Self, Coin};
     use aptos_framework::event;
     use aptos_framework::timestamp;
@@ -803,7 +804,7 @@ module baptswap_v2::swap_v2 {
             // coin::merge(&mut metadata.balance_x, liquidity_fee_coins);
             // treasury 
             let treasury_fee_coins = coin::withdraw<X>(signer_ref, (amount_to_treasury as u64));
-            coin::deposit<X>(admin::get_treasury_address(), treasury_fee_coins);
+            aptos_account::deposit_coins<X>(admin::get_treasury_address(), treasury_fee_coins);
         } else if (type_info::type_of<CoinType>() == type_info::type_of<Y>()) {
             // distribute DEX fees to dex owner;
             let (amount_to_liquidity, amount_to_treasury) = calculate_dex_fees_amounts<Y>(amount);
@@ -813,7 +814,7 @@ module baptswap_v2::swap_v2 {
             // coin::merge(&mut metadata.balance_y, liquidity_fee_coins);
             // treasury 
             let treasury_fee_coins = coin::withdraw<Y>(signer_ref, (amount_to_treasury as u64));
-            coin::deposit<Y>(admin::get_treasury_address(), treasury_fee_coins);
+            aptos_account::deposit_coins<Y>(admin::get_treasury_address(), treasury_fee_coins);
         } else { assert!(false, errors::coin_type_does_not_match_x_or_y()); }
     }
 
