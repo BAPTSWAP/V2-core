@@ -381,31 +381,31 @@ module baptswap_v2::admin {
     // Tiers related
 
     #[view]
-    // Returns fees for universal tier
-    public fun get_universal_liquidity_fee_modifier(): (u128, u128) acquires Universal {
+    // Returns liquidity fees for universal tier
+    public fun get_universal_liquidity_fee_modifier(): u128 acquires Universal {
         let tier = borrow_global<Universal>(constants::get_resource_account_address());
-        (tier.liquidity_fee_modifier, tier.treasury_fee_modifier)
+        tier.liquidity_fee_modifier
     }
 
     #[view]
-    // Returns fees for popular traded tier
-    public fun get_popular_traded_liquidity_fee_modifier(): (u128, u128) acquires PopularTraded {
+    // Returns liquidity fees for popular traded tier
+    public fun get_popular_traded_liquidity_fee_modifier(): u128 acquires PopularTraded {
         let tier = borrow_global<PopularTraded>(constants::get_resource_account_address());
-        (tier.liquidity_fee_modifier, tier.treasury_fee_modifier)
+        tier.liquidity_fee_modifier
     }
 
     #[view]
-    // Returns fees for stable tier
-    public fun get_stable_liquidity_fee_modifier(): (u128, u128) acquires Stable {
+    // Returns liquidity fees for stable tier
+    public fun get_stable_liquidity_fee_modifier(): u128 acquires Stable {
         let tier = borrow_global<Stable>(constants::get_resource_account_address());
-        (tier.liquidity_fee_modifier, tier.treasury_fee_modifier)
+        tier.liquidity_fee_modifier
     }
 
     #[view]
-    // Returns fees for very stable tier
-    public fun get_very_stable_liquidity_fee_modifier(): (u128, u128) acquires VeryStable {
+    // Returns liquidity fees for very stable tier
+    public fun get_very_stable_liquidity_fee_modifier(): u128 acquires VeryStable {
         let tier = borrow_global<VeryStable>(constants::get_resource_account_address());
-        (tier.liquidity_fee_modifier, tier.treasury_fee_modifier)
+        tier.liquidity_fee_modifier
     }
 
     #[view]

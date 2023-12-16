@@ -191,7 +191,7 @@ module baptswap_v2::stake {
     }
 
     // unstake tokens pair
-    public(friend) entry fun withdraw<X, Y>(
+    public(friend) fun withdraw<X, Y>(
         sender: &signer,
         amount: u64
     ) acquires TokenPairRewardsPool, RewardsPoolUserInfo {
@@ -235,8 +235,23 @@ module baptswap_v2::stake {
         pool_info.magnified_dividends_per_share_y = 0;
     }
 
+    // // TODO: add rewards
+    // public(friend) fun add_rewards<X, Y>(
+    //     sender: &signer,
+    //     amount_x: u64
+    // ) acquires TokenPairRewardsPool { 
+    //     assert!(exists<TokenPairRewardsPool<X, Y>>(constants::get_resource_account_address()), errors::pool_not_created());
+    //     let pool_info = borrow_global_mut<TokenPairRewardsPool<X, Y>>(constants::get_resource_account_address());
+
+    //     // Update pool
+    //     update_pool<X, Y>(amount_x, 0);
+
+    //     // Transfer in rewards
+    //     utils::transfer_in<X>(&mut pool_info.balance_x, sender, amount_x);
+    // }
+
     // claim rewards
-    public(friend) entry fun claim_rewards<X, Y>(sender: &signer) acquires TokenPairRewardsPool, RewardsPoolUserInfo {
+    public(friend) fun claim_rewards<X, Y>(sender: &signer) acquires TokenPairRewardsPool, RewardsPoolUserInfo {
         assert!(exists<TokenPairRewardsPool<X, Y>>(constants::get_resource_account_address()), errors::pool_not_created());
         let pool_info = borrow_global_mut<TokenPairRewardsPool<X, Y>>(constants::get_resource_account_address());
 

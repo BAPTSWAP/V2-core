@@ -3,12 +3,12 @@ name = "BaptswapV2"
 version = "0.3.1"
 authors = []
 
+# TODO: set addresses
 [addresses]
 bapt_framework = "b1d76027a907d3597deb415de1f15103bf36e933468afa41d758487e1b62a663"
 baptswap_v2 = "28536a218968db9024099345aca629c9d770ea5e087b06a90073c68fdd9aa594"
 dev_2 = "97c8aca6082f2ef7a0046c72eb81ebf203ca23086baf15557579570c86a89fd3"
 
-# to be set! testing only
 treasury = "0x438f261f7d74f1b04d3558165b0c91df8caa623f5adb8e3dc6427f8c145fbbbb"
 admin = "0x6b8cb2f16463a768ed4cd38b91494dfa902195a6f3675e232d007e8d29915811"
 
