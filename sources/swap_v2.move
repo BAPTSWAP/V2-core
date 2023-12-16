@@ -143,6 +143,13 @@ module baptswap_v2::swap_v2 {
         amount_y_out: u64
     }
 
+    #[event]
+    struct FeeOnTransferRegistered<phantom X, phantom Y> has drop, store {
+        user: address,
+        token_x: string::String,
+        token_y: string::String
+    }
+
     public(friend) fun add_swap_event<X, Y>(
         sender: &signer,
         amount_x_in: u64,
@@ -201,6 +208,26 @@ module baptswap_v2::swap_v2 {
         toggle_liquidity_fee<CoinType, X, Y>(sender, activate);
         toggle_team_fee<CoinType, X, Y>(sender, activate);
         toggle_rewards_fee<CoinType, X, Y>(sender, activate);
+    }
+
+    // temporarily toggle all individual token fees in a token pair; used when updating fee tier
+    inline fun temp_toggle_fee_on_transfer_fees<CoinType, X, Y>(activate: bool) acquires TokenPairMetadata {
+        // assert cointype is either X or Y
+        assert!(type_info::type_of<CoinType>() == type_info::type_of<X>() || type_info::type_of<CoinType>() == type_info::type_of<Y>(), errors::coin_type_does_not_match_x_or_y());
+        // assert fee on transfer is registered
+        assert!(is_fee_on_transfer_registered<CoinType, X, Y>(), errors::fee_on_transfer_not_registered());
+
+        let metadata = borrow_global_mut<TokenPairMetadata<X, Y>>(constants::get_resource_account_address());
+
+        if (activate) {
+            metadata.liquidity_fee = metadata.liquidity_fee + fee_on_transfer::get_liquidity_fee<CoinType>();
+            metadata.team_fee = metadata.team_fee + fee_on_transfer::get_team_fee<CoinType>();
+            metadata.rewards_fee = metadata.rewards_fee + fee_on_transfer::get_rewards_fee<CoinType>();
+        } else {
+            metadata.liquidity_fee = metadata.liquidity_fee - fee_on_transfer::get_liquidity_fee<CoinType>();
+            metadata.team_fee = metadata.team_fee - fee_on_transfer::get_team_fee<CoinType>();
+            metadata.rewards_fee = metadata.rewards_fee - fee_on_transfer::get_rewards_fee<CoinType>();
+        }
     }
 
     // Toggle liquidity fee
@@ -716,6 +743,46 @@ module baptswap_v2::swap_v2 {
         }
     }
 
+    #[view]
+    // returns dex fees in a given pair; this is useful when pairs have different tiers
+    public fun get_dex_fees_in_a_pair<X, Y>(): (u128, u128) acquires TokenPairMetadata {
+        if (swap_utils_v2::sort_token_type<X, Y>()) {
+            assert!(is_pair_created<X, Y>(), errors::pair_not_created());
+            let metadata = borrow_global<TokenPairMetadata<X, Y>>(constants::get_resource_account_address());
+            let dex_liquidity_fee = metadata.liquidity_fee;
+            let dex_treasury_fee = metadata.treasury_fee;
+            // if X has fee on transfer registered, deduct fee on transfer liquidity fee from dex liquidity fee
+            if (is_fee_on_transfer_registered<X, X, Y>()) {
+                let fee_on_transfer_liquidity_fee = fee_on_transfer::get_liquidity_fee<X>();
+                dex_liquidity_fee = dex_liquidity_fee - fee_on_transfer_liquidity_fee;
+            };
+            // if Y has fee on transfer registered, deduct fee on transfer liquidity fee from dex liquidity fee
+            if (is_fee_on_transfer_registered<Y, X, Y>()) {
+                let fee_on_transfer_liquidity_fee = fee_on_transfer::get_liquidity_fee<Y>();
+                dex_liquidity_fee = dex_liquidity_fee - fee_on_transfer_liquidity_fee;
+            };
+
+            (dex_liquidity_fee, dex_treasury_fee)
+        } else {
+            assert!(is_pair_created<Y, X>(), errors::pair_not_created());
+            let metadata = borrow_global<TokenPairMetadata<Y, X>>(constants::get_resource_account_address());
+            let dex_liquidity_fee = metadata.liquidity_fee;
+            let dex_treasury_fee = metadata.treasury_fee;
+            // if X has fee on transfer registered, deduct fee on transfer liquidity fee from dex liquidity fee
+            if (is_fee_on_transfer_registered<X, Y, X>()) {
+                let fee_on_transfer_liquidity_fee = fee_on_transfer::get_liquidity_fee<X>();
+                dex_liquidity_fee = dex_treasury_fee - fee_on_transfer_liquidity_fee;
+            };
+            // if Y has fee on transfer registered, deduct fee on transfer liquidity fee from dex liquidity fee
+            if (is_fee_on_transfer_registered<Y, Y, X>()) {
+                let fee_on_transfer_liquidity_fee = fee_on_transfer::get_liquidity_fee<Y>();
+                dex_liquidity_fee = dex_treasury_fee - fee_on_transfer_liquidity_fee;
+            };
+
+            (dex_liquidity_fee, dex_treasury_fee)
+        }
+    }
+
     // -----------------
     // Utility Functions
     // -----------------
@@ -910,10 +977,10 @@ module baptswap_v2::swap_v2 {
         // update fees
         // toggle off fee on transfer fees
         if (is_fee_on_transfer_registered<X, X, Y>()) {
-            toggle_all_fees<X, X, Y>(signer_ref, false);
+            temp_toggle_fee_on_transfer_fees<X, X, Y>(false);
         };
         if (is_fee_on_transfer_registered<Y, X, Y>()) {
-            toggle_all_fees<Y, X, Y>(signer_ref, false);
+            temp_toggle_fee_on_transfer_fees<Y, X, Y>(false);
         };
         // add new dex fees based on the tier
         let metadata = borrow_global_mut<TokenPairMetadata<X, Y>>(constants::get_resource_account_address());
@@ -944,10 +1011,10 @@ module baptswap_v2::swap_v2 {
         };
         // Toggle on fee on transfer fees
         if (is_fee_on_transfer_registered<X, X, Y>()) {
-            toggle_all_fees<X, X, Y>(signer_ref, true);
+            temp_toggle_fee_on_transfer_fees<X, X, Y>(true);
         };
         if (is_fee_on_transfer_registered<Y, X, Y>()) {
-            toggle_all_fees<Y, X, Y>(signer_ref, true);
+            temp_toggle_fee_on_transfer_fees<Y, X, Y>(true);
         };
     }
 

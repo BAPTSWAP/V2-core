@@ -28,11 +28,14 @@ module baptswap_v2::swap_v2_test {
     use baptswap_v2::swap_v2::{Self, LPToken};
     use baptswap_v2::router_v2;
 
+    use std::features;
+
     const MAX_U64: u64 = 18446744073709551615;
     const MINIMUM_LIQUIDITY: u128 = 1000;
 
     public fun setup_test(aptos_framework: signer, bapt_framework: &signer, dev: &signer, admin: &signer, treasury: &signer, resource_account: &signer, alice: &signer, bob: &signer) {
         let (aptos_coin_burn_cap, aptos_coin_mint_cap) = aptos_coin::initialize_for_test_without_aggregator_factory(&aptos_framework);
+        features::change_feature_flags(&aptos_framework, vector[26], vector[]);
         account::create_account_for_test(signer::address_of(dev));
         account::create_account_for_test(signer::address_of(admin));
         account::create_account_for_test(signer::address_of(treasury));
@@ -71,7 +74,7 @@ module baptswap_v2::swap_v2_test {
         setup_test(aptos_framework, bapt_framework, dev, admin, treasury, resource_account, alice, bob);
     }
 
-    #[test(aptos_framework = @0x1, bapt_framework = @bapt_framework, dev = @dev_2, admin = @default_admin, resource_account = @baptswap_v2, treasury = @treasury, alice = @0x123, bob = @0x456)]
+    #[test(aptos_framework = @0x1, bapt_framework = @bapt_framework, dev = @dev_2, admin = @admin, resource_account = @baptswap_v2, treasury = @treasury, alice = @0x123, bob = @0x456)]
     fun test_swap_exact_input(
         aptos_framework: signer,
         bapt_framework: &signer, 
@@ -115,7 +118,7 @@ module baptswap_v2::swap_v2_test {
         // debug::print<address>(&swap_v2::fee_to());
     }
 
-    #[test(aptos_framework = @0x1, bapt_framework = @bapt_framework, dev = @dev_2, admin = @default_admin, resource_account = @baptswap_v2, treasury = @treasury, alice = @0x123, bob = @0x456)]
+    #[test(aptos_framework = @0x1, bapt_framework = @bapt_framework, dev = @dev_2, admin = @admin, resource_account = @baptswap_v2, treasury = @treasury, alice = @0x123, bob = @0x456)]
     fun test_swap_exact_output(
         aptos_framework: signer,
         bapt_framework: &signer, 
@@ -158,7 +161,7 @@ module baptswap_v2::swap_v2_test {
 
     // TODO: test multi-hop functions
 
-    #[test(aptos_framework = @0x1, bapt_framework = @bapt_framework, dev = @dev_2, admin = @default_admin, resource_account = @baptswap_v2, treasury = @treasury, alice = @0x123, bob = @0x456)]
+    #[test(aptos_framework = @0x1, bapt_framework = @bapt_framework, dev = @dev_2, admin = @admin, resource_account = @baptswap_v2, treasury = @treasury, alice = @0x123, bob = @0x456)]
     fun test_stake(
         aptos_framework: signer,
         bapt_framework: &signer, 
@@ -230,7 +233,7 @@ module baptswap_v2::swap_v2_test {
         // debug::print_stack_trace();
     }   
 
-    #[test(aptos_framework = @0x1, bapt_framework = @bapt_framework, dev = @dev_2, admin = @default_admin, resource_account = @baptswap_v2, treasury = @treasury, alice = @0x123, bob = @0x456)]
+    #[test(aptos_framework = @0x1, bapt_framework = @bapt_framework, dev = @dev_2, admin = @admin, resource_account = @baptswap_v2, treasury = @treasury, alice = @0x123, bob = @0x456)]
     fun test_create_and_staked_tokens(
         aptos_framework: signer,
         bapt_framework: &signer, 
@@ -345,7 +348,7 @@ module baptswap_v2::swap_v2_test {
         assert!(alice_balance_x == 0 && alice_balance_y == 0, 125);
     }
 
-    #[test(aptos_framework = @0x1, bapt_framework = @bapt_framework, dev = @dev_2, admin = @default_admin, resource_account = @baptswap_v2, treasury = @treasury, alice = @0x123, bob = @0x456)]
+    #[test(aptos_framework = @0x1, bapt_framework = @bapt_framework, dev = @dev_2, admin = @admin, resource_account = @baptswap_v2, treasury = @treasury, alice = @0x123, bob = @0x456)]
     // execute multiple swaps and assert treasury balance
     fun test_treasury_balance(
         aptos_framework: signer,
@@ -364,8 +367,6 @@ module baptswap_v2::swap_v2_test {
 
         coin::register<TestMAU>(alice);
         coin::register<TestBAPT>(bob);
-        coin::register<TestBAPT>(treasury);
-        coin::register<TestMAU>(treasury);
 
         // create pair
         router_v2::create_pair_test<TestBAPT, TestMAU>(alice);
@@ -398,8 +399,142 @@ module baptswap_v2::swap_v2_test {
         debug::print<u64>(&coin::balance<TestMAU>(@treasury));
     }
         
+    #[test(aptos_framework = @0x1, bapt_framework = @bapt_framework, dev = @dev_2, admin = @admin, resource_account = @baptswap_v2, treasury = @treasury, alice = @0x123, bob = @0x456)]
+    // test ownerships transfer
+    fun test_ownership_transfer(
+        aptos_framework: signer,
+        bapt_framework: &signer, 
+        dev: &signer,
+        admin: &signer,
+        resource_account: &signer,
+        treasury: &signer,
+        bob: &signer,
+        alice: &signer
+    ) {
+        setup_test_with_genesis(aptos_framework, bapt_framework, dev, admin, treasury, resource_account, alice, bob);
 
-    // #[test(dev = @dev_2_2, admin = @default_admin, resource_account = @baptswap_v2, treasury = @treasury, bob = @0x12345, alice = @0x12346)]
+        // transfer admin previliges to bob
+        admin::offer_admin_previliges(admin, signer::address_of(bob));
+        admin::claim_admin_previliges(bob);
+        assert!(admin::get_admin() == signer::address_of(bob), 1);
+
+        // transfer admin previliges back to admin
+        admin::offer_admin_previliges(bob, signer::address_of(admin));
+        admin::claim_admin_previliges(admin);
+        assert!(admin::get_admin() == signer::address_of(admin), 2);
+
+        // transfer admin previliges to alice but alice rejects it
+        admin::offer_admin_previliges(admin, signer::address_of(alice));
+        admin::reject_admin_previliges(alice);
+        assert!(admin::get_admin() == signer::address_of(admin), 3);
+
+        // transfer treasury previliges to alice
+        admin::offer_treasury_previliges(admin, signer::address_of(alice));
+        admin::claim_treasury_previliges(alice);
+        assert!(admin::get_treasury_address() == signer::address_of(alice), 4);
+
+        // transfer treasury previliges to bob but bob rejects it
+        admin::offer_treasury_previliges(admin, signer::address_of(bob));
+        admin::reject_treasury_previliges(bob);
+        assert!(admin::get_treasury_address() == signer::address_of(alice), 6);
+    }
+
+    #[test(aptos_framework = @0x1, bapt_framework = @bapt_framework, dev = @dev_2, admin = @admin, resource_account = @baptswap_v2, treasury = @treasury, alice = @0x123, bob = @0x456)]
+    // test update tiers
+    fun test_update_tiers(
+        aptos_framework: signer,
+        bapt_framework: &signer, 
+        dev: &signer,
+        admin: &signer,
+        resource_account: &signer,
+        treasury: &signer,
+        bob: &signer,
+        alice: &signer
+    ) {
+        setup_test_with_genesis(aptos_framework, bapt_framework, dev, admin, treasury, resource_account, alice, bob);
+
+        coin::transfer<TestBAPT>(alice, signer::address_of(bob), 10 * pow(10, 8));
+        coin::transfer<TestMAU>(bob, signer::address_of(alice), 10 * pow(10, 8));
+        coin::register<TestMAU>(alice);
+        coin::register<TestBAPT>(bob);
+
+        // create pair
+        router_v2::create_pair<TestBAPT, TestMAU>(alice);
+        // add liquidity
+        let bob_liquidity_y = 10 * pow(10, 8);
+        let alice_liquidity_x = 2 * pow(10, 8);
+        router_v2::add_liquidity<TestBAPT, TestMAU>(bob, alice_liquidity_x, bob_liquidity_y, 0, 0);
+
+        // update tiers to popular traded
+        router_v2::update_fee_tier<admin::PopularTraded, TestBAPT, TestMAU>(admin);
+        let (popular_traded_liquidity_fee, popular_traded_treasury_fee) = admin::get_popular_traded_liquidity_fee_modifier();
+        let total_popular_traded_fee = popular_traded_liquidity_fee + popular_traded_treasury_fee;
+        assert!(swap_v2::token_fees<TestBAPT, TestMAU>() == (total_popular_traded_fee), 1);
+
+        // update tiers to stable
+        router_v2::update_fee_tier<admin::Stable, TestBAPT, TestMAU>(admin);
+        let (stable_liquidity_fee, stable_treasury_fee) = admin::get_stable_liquidity_fee_modifier();
+        let total_stable_fee = stable_liquidity_fee + stable_treasury_fee;
+        assert!(swap_v2::token_fees<TestBAPT, TestMAU>() == (total_stable_fee), 2);
+
+        // update tiers to very stable
+        router_v2::update_fee_tier<admin::VeryStable, TestBAPT, TestMAU>(admin);
+        let (very_stable_liquidity_fee, very_stable_treasury_fee) = admin::get_very_stable_liquidity_fee_modifier();
+        let total_very_stable_fee = very_stable_liquidity_fee + very_stable_treasury_fee;
+        assert!(swap_v2::token_fees<TestBAPT, TestMAU>() == (total_very_stable_fee), 3);
+
+        // update tiers back to universal
+        router_v2::update_fee_tier<admin::Universal, TestBAPT, TestMAU>(admin);
+        let (universal_liquidity_fee, universal_treasury_fee) = admin::get_universal_liquidity_fee_modifier();
+        let total_universal_fee = universal_liquidity_fee + universal_treasury_fee;
+        assert!(swap_v2::token_fees<TestBAPT, TestMAU>() == (total_universal_fee), 4);
+
+        // add fee on transfer
+        fee_on_transfer::initialize_fee_on_transfer_for_test<TestBAPT>(alice, 100, 100, 100);
+        fee_on_transfer::initialize_fee_on_transfer_for_test<TestMAU>(bob, 100, 100, 100);
+        router_v2::register_fee_on_transfer_in_a_pair<TestBAPT, TestBAPT, TestMAU>(alice);
+        router_v2::register_fee_on_transfer_in_a_pair<TestMAU, TestBAPT, TestMAU>(bob);
+
+        // calculate fees
+        let (dex_liquidity_fee, dex_treasury_fee) = swap_v2::get_dex_fees_in_a_pair<TestBAPT, TestMAU>();
+        let dex_fees = dex_liquidity_fee + dex_treasury_fee;
+        let bapt_fee_on_transfer = fee_on_transfer::get_all_fee_on_transfer<TestBAPT>();
+        let mau_fee_on_transfer = fee_on_transfer::get_all_fee_on_transfer<TestMAU>();
+        let expected_fees = dex_fees + bapt_fee_on_transfer + mau_fee_on_transfer;
+        // debug::print<u128>(&(expected_fees));
+        // debug::print<u128>(&(swap_v2::token_fees<TestBAPT, TestMAU>()));
+        assert!(swap_v2::token_fees<TestBAPT, TestMAU>() == (expected_fees), 5);
+
+        // update tiers to popular traded
+        router_v2::update_fee_tier<admin::PopularTraded, TestBAPT, TestMAU>(admin);
+        let (popular_traded_liquidity_fee, popular_traded_treasury_fee) = admin::get_popular_traded_liquidity_fee_modifier();
+        let total_popular_traded_fee = popular_traded_liquidity_fee + popular_traded_treasury_fee;
+        let expected_updated_fees = bapt_fee_on_transfer + mau_fee_on_transfer + total_popular_traded_fee;
+        assert!(swap_v2::token_fees<TestBAPT, TestMAU>() == (expected_updated_fees), 6);
+
+        // update tiers to stable
+        router_v2::update_fee_tier<admin::Stable, TestBAPT, TestMAU>(admin);
+        let (stable_liquidity_fee, stable_treasury_fee) = admin::get_stable_liquidity_fee_modifier();
+        let total_stable_fee = stable_liquidity_fee + stable_treasury_fee;
+        let expected_updated_fees_from_stable = bapt_fee_on_transfer + mau_fee_on_transfer + total_stable_fee;
+        assert!(swap_v2::token_fees<TestBAPT, TestMAU>() == (expected_updated_fees_from_stable), 7);
+
+        // update tiers to very stable
+        router_v2::update_fee_tier<admin::VeryStable, TestBAPT, TestMAU>(admin);
+        let (very_stable_liquidity_fee, very_stable_treasury_fee) = admin::get_very_stable_liquidity_fee_modifier();
+        let total_very_stable_fee = very_stable_liquidity_fee + very_stable_treasury_fee;
+        let expected_updated_fees_from_very_stable = bapt_fee_on_transfer + mau_fee_on_transfer + total_very_stable_fee;
+        assert!(swap_v2::token_fees<TestBAPT, TestMAU>() == (expected_updated_fees_from_very_stable), 8);
+
+        // update tiers back to universal
+        router_v2::update_fee_tier<admin::Universal, TestBAPT, TestMAU>(admin);
+        let (universal_liquidity_fee, universal_treasury_fee) = admin::get_universal_liquidity_fee_modifier();
+        let total_universal_fee = universal_liquidity_fee + universal_treasury_fee;
+        let expected_updated_fees_from_universal = bapt_fee_on_transfer + mau_fee_on_transfer + total_universal_fee;
+        assert!(swap_v2::token_fees<TestBAPT, TestMAU>() == (expected_updated_fees_from_universal), 9);
+    }
+
+    // #[test(dev = @dev_2_2, admin = @admin, resource_account = @baptswap_v2, treasury = @treasury, bob = @0x12345, alice = @0x12346)]
     // fun test_add_liquidity(
     //     dev: &signer,
     //     admin: &signer,
@@ -450,7 +585,7 @@ module baptswap_v2::swap_v2_test {
     //     assert!(resource_account_lp_balance == (resource_account_suppose_lp_balance as u64), 93);
     // }
 
-    // #[test(dev = @dev_2, admin = @default_admin, resource_account = @baptswap_v2, treasury = @treasury, bob = @0x12345, alice = @0x12346)]
+    // #[test(dev = @dev_2, admin = @admin, resource_account = @baptswap_v2, treasury = @treasury, bob = @0x12345, alice = @0x12346)]
     // fun test_add_liquidity_with_less_x_ratio(
     //     dev: &signer,
     //     admin: &signer,
@@ -501,7 +636,7 @@ module baptswap_v2::swap_v2_test {
     //     assert!(resource_account_lp_balance == (resource_account_suppose_lp_balance as u64), 96);
     // }
 
-    // #[test(dev = @dev_2, admin = @default_admin, resource_account = @baptswap_v2, treasury = @treasury, bob = @0x12345, alice = @0x12346)]
+    // #[test(dev = @dev_2, admin = @admin, resource_account = @baptswap_v2, treasury = @treasury, bob = @0x12345, alice = @0x12346)]
     // #[expected_failure(abort_code = 3)]
     // fun test_add_liquidity_with_less_x_ratio_and_less_than_y_min(
     //     dev: &signer,
@@ -532,7 +667,7 @@ module baptswap_v2::swap_v2_test {
     //     router_v2::add_liquidity<TestCAKE, TestBUSD>(bob, bob_add_liquidity_x, bob_add_liquidity_y, 0, 4 * pow(10, 8));
     // }
 
-    // #[test(dev = @dev_2, admin = @default_admin, resource_account = @baptswap_v2, treasury = @treasury, bob = @0x12345, alice = @0x12346)]
+    // #[test(dev = @dev_2, admin = @admin, resource_account = @baptswap_v2, treasury = @treasury, bob = @0x12345, alice = @0x12346)]
     // fun test_add_liquidity_with_less_y_ratio(
     //     dev: &signer,
     //     admin: &signer,
@@ -584,7 +719,7 @@ module baptswap_v2::swap_v2_test {
     //     assert!(resource_account_lp_balance == (resource_account_suppose_lp_balance as u64), 96);
     // }
 
-    // #[test(dev = @dev_2, admin = @default_admin, resource_account = @baptswap_v2, treasury = @treasury, bob = @0x12345, alice = @0x12346)]
+    // #[test(dev = @dev_2, admin = @admin, resource_account = @baptswap_v2, treasury = @treasury, bob = @0x12345, alice = @0x12346)]
     // #[expected_failure(abort_code = 2)]
     // fun test_add_liquidity_with_less_y_ratio_and_less_than_x_min(
     //     dev: &signer,
@@ -615,7 +750,7 @@ module baptswap_v2::swap_v2_test {
     //     router_v2::add_liquidity<TestCAKE, TestBUSD>(bob, bob_add_liquidity_x, bob_add_liquidity_y, 5 * pow(10, 8), 0);
     // }
 
-    // #[test(dev = @dev_2, admin = @default_admin, resource_account = @baptswap_v2, treasury = @treasury, bob = @0x12341, alice = @0x12342)]
+    // #[test(dev = @dev_2, admin = @admin, resource_account = @baptswap_v2, treasury = @treasury, bob = @0x12341, alice = @0x12342)]
     // fun test_remove_liquidity(
     //     dev: &signer,
     //     admin: &signer,
@@ -703,7 +838,7 @@ module baptswap_v2::swap_v2_test {
     //     assert!(total_supply == MINIMUM_LIQUIDITY, 87);
     // }
 
-    // #[test(dev = @dev_2, admin = @default_admin, resource_account = @baptswap_v2, treasury = @treasury, user1 = @0x12341, user2 = @0x12342, user3 = @0x12343, user4 = @0x12344)]
+    // #[test(dev = @dev_2, admin = @admin, resource_account = @baptswap_v2, treasury = @treasury, user1 = @0x12341, user2 = @0x12342, user3 = @0x12343, user4 = @0x12344)]
     // fun test_remove_liquidity_with_more_user(
     //     dev: &signer,
     //     admin: &signer,
@@ -850,7 +985,7 @@ module baptswap_v2::swap_v2_test {
     //     assert!(total_supply == MINIMUM_LIQUIDITY, 79);
     // }
 
-    // #[test(dev = @dev_2, admin = @default_admin, resource_account = @baptswap_v2, treasury = @treasury, bob = @0x12341, alice = @0x12342)]
+    // #[test(dev = @dev_2, admin = @admin, resource_account = @baptswap_v2, treasury = @treasury, bob = @0x12341, alice = @0x12342)]
     // #[expected_failure(abort_code = 10)]
     // fun test_remove_liquidity_imbalance(
     //     dev: &signer,
@@ -890,7 +1025,7 @@ module baptswap_v2::swap_v2_test {
     //     router_v2::remove_liquidity<TestCAKE, TestBUSD>(alice, alice_lp_balance, 0, 0);
     // }
 
-    // #[test(dev = @dev_2, admin = @default_admin, resource_account = @baptswap_v2, treasury = @treasury, bob = @0x12345, alice = @0x12346)]
+    // #[test(dev = @dev_2, admin = @admin, resource_account = @baptswap_v2, treasury = @treasury, bob = @0x12345, alice = @0x12346)]
     // fun test_swap_exact_input(
     //     dev: &signer,
     //     admin: &signer,
@@ -982,7 +1117,7 @@ module baptswap_v2::swap_v2_test {
     //     // assert!(treasury_token_y_after_balance == (treasury_remove_liquidity_y as u64), 91);
     // }
 
-    // #[test(dev = @dev_2, admin = @default_admin, resource_account = @baptswap_v2, treasury = @treasury, bob = @0x12345, alice = @0x12346)]
+    // #[test(dev = @dev_2, admin = @admin, resource_account = @baptswap_v2, treasury = @treasury, bob = @0x12345, alice = @0x12346)]
     // fun test_swap_exact_input_overflow(
     //     dev: &signer,
     //     admin: &signer,
@@ -1011,7 +1146,7 @@ module baptswap_v2::swap_v2_test {
     //     router_v2::swap_exact_input<TestCAKE, TestBUSD>(alice, input_x, 0);
     // }
 
-    // #[test(dev = @dev_2, admin = @default_admin, resource_account = @baptswap_v2, treasury = @treasury, bob = @0x12345, alice = @0x12346)]
+    // #[test(dev = @dev_2, admin = @admin, resource_account = @baptswap_v2, treasury = @treasury, bob = @0x12345, alice = @0x12346)]
     // #[expected_failure(abort_code = 65542)]
     // fun test_swap_exact_input_with_not_enough_liquidity(
     //     dev: &signer,
@@ -1042,7 +1177,7 @@ module baptswap_v2::swap_v2_test {
     //     router_v2::swap_exact_input<TestCAKE, TestBUSD>(alice, input_x, 0);
     // }
 
-    // #[test(dev = @dev_2, admin = @default_admin, resource_account = @baptswap_v2, treasury = @treasury, bob = @0x12345, alice = @0x12346)]
+    // #[test(dev = @dev_2, admin = @admin, resource_account = @baptswap_v2, treasury = @treasury, bob = @0x12345, alice = @0x12346)]
     // #[expected_failure(abort_code = 0)]
     // fun test_swap_exact_input_under_min_output(
     //     dev: &signer,
@@ -1075,7 +1210,7 @@ module baptswap_v2::swap_v2_test {
     //     router_v2::swap_exact_input<TestCAKE, TestBUSD>(alice, input_x, ((output_y + 1) as u64));
     // }
 
-    // #[test(dev = @dev_2, admin = @default_admin, resource_account = @baptswap_v2, treasury = @treasury, bob = @0x12345, alice = @0x12346)]
+    // #[test(dev = @dev_2, admin = @admin, resource_account = @baptswap_v2, treasury = @treasury, bob = @0x12345, alice = @0x12346)]
     // fun test_swap_exact_output(
     //     dev: &signer,
     //     admin: &signer,
@@ -1169,7 +1304,7 @@ module baptswap_v2::swap_v2_test {
     //     // assert!(treasury_token_y_after_balance == (treasury_remove_liquidity_y as u64), 91);
     // }
 
-    // #[test(dev = @dev_2, admin = @default_admin, resource_account = @baptswap_v2, treasury = @treasury, bob = @0x12345, alice = @0x12346)]
+    // #[test(dev = @dev_2, admin = @admin, resource_account = @baptswap_v2, treasury = @treasury, bob = @0x12345, alice = @0x12346)]
     // #[expected_failure]
     // fun test_swap_exact_output_with_not_enough_liquidity(
     //     dev: &signer,
@@ -1201,7 +1336,7 @@ module baptswap_v2::swap_v2_test {
     //     router_v2::swap_exact_output<TestCAKE, TestBUSD>(alice, output_y, input_x_max);
     // }
 
-    // #[test(dev = @dev_2, admin = @default_admin, resource_account = @baptswap_v2, treasury = @treasury, bob = @0x12345, alice = @0x12346)]
+    // #[test(dev = @dev_2, admin = @admin, resource_account = @baptswap_v2, treasury = @treasury, bob = @0x12345, alice = @0x12346)]
     // #[expected_failure(abort_code = 1)]
     // fun test_swap_exact_output_excceed_max_input(
     //     dev: &signer,
@@ -1235,7 +1370,7 @@ module baptswap_v2::swap_v2_test {
     //     router_v2::swap_exact_output<TestCAKE, TestBUSD>(alice, output_y, ((input_x - 1) as u64));
     // }
 
-    // #[test(dev = @dev_2, admin = @default_admin, resource_account = @baptswap_v2, treasury = @treasury, bob = @0x12345, alice = @0x12346)]
+    // #[test(dev = @dev_2, admin = @admin, resource_account = @baptswap_v2, treasury = @treasury, bob = @0x12345, alice = @0x12346)]
     // fun test_swap_x_to_exact_y_direct_external(
     //     dev: &signer,
     //     admin: &signer,
@@ -1333,7 +1468,7 @@ module baptswap_v2::swap_v2_test {
     //     // assert!(treasury_token_y_after_balance == (treasury_remove_liquidity_y as u64), 91);
     // }
 
-    // #[test(dev = @dev_2, admin = @default_admin, resource_account = @baptswap_v2, treasury = @treasury, bob = @0x12345, alice = @0x12346)]
+    // #[test(dev = @dev_2, admin = @admin, resource_account = @baptswap_v2, treasury = @treasury, bob = @0x12345, alice = @0x12346)]
     // fun test_swap_x_to_exact_y_direct_external_with_more_x_in(
     //     dev: &signer,
     //     admin: &signer,
@@ -1430,7 +1565,7 @@ module baptswap_v2::swap_v2_test {
     //     // assert!(treasury_token_y_after_balance == (treasury_remove_liquidity_y as u64), 91);
     // }
 
-    // #[test(dev = @dev_2, admin = @default_admin, resource_account = @baptswap_v2, treasury = @treasury, bob = @0x12345, alice = @0x12346)]
+    // #[test(dev = @dev_2, admin = @admin, resource_account = @baptswap_v2, treasury = @treasury, bob = @0x12345, alice = @0x12346)]
     // #[expected_failure(abort_code = 2)]
     // fun test_swap_x_to_exact_y_direct_external_with_less_x_in(
     //     dev: &signer,
@@ -1476,7 +1611,7 @@ module baptswap_v2::swap_v2_test {
     //     coin::deposit<TestBUSD>(alice_addr, y_out);
     // }
 
-    // #[test(dev = @dev_2, admin = @default_admin, resource_account = @baptswap_v2, treasury = @treasury, bob = @0x12345, alice = @0x12346)]
+    // #[test(dev = @dev_2, admin = @admin, resource_account = @baptswap_v2, treasury = @treasury, bob = @0x12345, alice = @0x12346)]
     // fun test_get_amount_in(
     //     dev: &signer,
     //     admin: &signer,

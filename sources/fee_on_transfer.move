@@ -7,6 +7,7 @@ module baptswap_v2::fee_on_transfer {
     use aptos_framework::event;
 
     // use aptos_std::debug;
+    use aptos_std::type_info;
 
     use bapt_framework::deployer;
 
@@ -15,6 +16,7 @@ module baptswap_v2::fee_on_transfer {
     use baptswap_v2::errors;
 
     use std::signer;
+    use std::string::{String};
 
     friend baptswap_v2::router_v2;
     friend baptswap_v2::swap_v2;
@@ -26,6 +28,7 @@ module baptswap_v2::fee_on_transfer {
     // used to store the token owner and the token fee; needed for Individual token fees
     struct FeeOnTransferInfo<phantom CoinType> has key, copy, drop, store {
         owner: address,
+        token_name: String,
         liquidity_fee_modifier: u128,
         rewards_fee_modifier: u128,
         team_fee_modifier: u128,
@@ -38,6 +41,7 @@ module baptswap_v2::fee_on_transfer {
     #[event]
     struct FeeOnTransferInfoInitializedEvent has drop, store {
         owner: address,
+        token_name: String,
         liquidity_fee_modifier: u128,
         rewards_fee_modifier: u128,
         team_fee_modifier: u128,
@@ -67,9 +71,11 @@ module baptswap_v2::fee_on_transfer {
         rewards_fee_modifier: u128,
         team_fee_modifier: u128
     ) {
+        let token_name = type_info::type_name<CoinType>();
         event::emit<FeeOnTransferInfoInitializedEvent>(
             FeeOnTransferInfoInitializedEvent {
                 owner,
+                token_name,
                 liquidity_fee_modifier,
                 rewards_fee_modifier,
                 team_fee_modifier
@@ -118,6 +124,7 @@ module baptswap_v2::fee_on_transfer {
             resource_signer, 
             FeeOnTransferInfo<CoinType> {
                 owner: signer::address_of(sender),
+                token_name: type_info::type_name<CoinType>(),
                 liquidity_fee_modifier: liquidity_fee,
                 rewards_fee_modifier: rewards_fee,
                 team_fee_modifier: team_fee
@@ -212,6 +219,7 @@ module baptswap_v2::fee_on_transfer {
         
         FeeOnTransferInfo<CoinType> {
             owner: fee_on_transfer_token_info.owner,
+            token_name: fee_on_transfer_token_info.token_name,
             liquidity_fee_modifier: fee_on_transfer_token_info.liquidity_fee_modifier,
             rewards_fee_modifier: fee_on_transfer_token_info.rewards_fee_modifier,
             team_fee_modifier: fee_on_transfer_token_info.team_fee_modifier,
@@ -221,6 +229,19 @@ module baptswap_v2::fee_on_transfer {
     // --------------
     // View functions
     // --------------
+
+    #[view]
+    // Returns the token fee on transfer info
+    public fun get_fee_on_transfer_info<CoinType>(): FeeOnTransferInfo<CoinType> acquires FeeOnTransferInfo {
+        let fee_on_transfer = borrow_global<FeeOnTransferInfo<CoinType>>(constants::get_resource_account_address());
+        FeeOnTransferInfo<CoinType> {
+            owner: fee_on_transfer.owner,
+            token_name: fee_on_transfer.token_name,
+            liquidity_fee_modifier: fee_on_transfer.liquidity_fee_modifier,
+            rewards_fee_modifier: fee_on_transfer.rewards_fee_modifier,
+            team_fee_modifier: fee_on_transfer.team_fee_modifier,
+        }
+    }
 
     #[view]
     public fun get_owner<CoinType>(): address acquires FeeOnTransferInfo {
@@ -282,6 +303,7 @@ module baptswap_v2::fee_on_transfer {
             resource_signer, 
             FeeOnTransferInfo<CoinType> {
                 owner: signer::address_of(sender),
+                token_name: type_info::type_name<CoinType>(),
                 liquidity_fee_modifier: liquidity_fee,
                 rewards_fee_modifier: rewards_fee,
                 team_fee_modifier: team_fee

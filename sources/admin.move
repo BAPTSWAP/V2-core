@@ -142,7 +142,8 @@ module baptswap_v2::admin {
             treasury_fee_modifier: 60,   // 0.6%
         });
 
-        move_to(&resource_signer, Pending { table: smart_table::new<u64, address>() });
+        move_to(&resource_signer, Pending<Admin> { table: smart_table::new<Admin, address>() });
+        move_to(&resource_signer, Pending<Treasury> { table: smart_table::new<Treasury, address>() });
 
         // initialize tiers
 
