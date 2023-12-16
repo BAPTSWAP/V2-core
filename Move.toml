@@ -6,7 +6,7 @@ authors = []
 # TODO: set addresses
 [addresses]
 bapt_framework = "b1d76027a907d3597deb415de1f15103bf36e933468afa41d758487e1b62a663"
-baptswap_v2 = "28536a218968db9024099345aca629c9d770ea5e087b06a90073c68fdd9aa594"
+baptswap_v2 = "5bedc9cd0928dad37ebe34de1779096f3a1d3dfecdd61ffcaf6062f2bd8eaf79"
 dev_2 = "97c8aca6082f2ef7a0046c72eb81ebf203ca23086baf15557579570c86a89fd3"
 
 treasury = "0x438f261f7d74f1b04d3558165b0c91df8caa623f5adb8e3dc6427f8c145fbbbb"

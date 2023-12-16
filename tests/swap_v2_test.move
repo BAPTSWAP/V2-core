@@ -39,7 +39,7 @@ module baptswap_v2::swap_v2_test {
         account::create_account_for_test(signer::address_of(dev));
         account::create_account_for_test(signer::address_of(admin));
         account::create_account_for_test(signer::address_of(treasury));
-        resource_account::create_resource_account(dev, b"laymagic", x"");
+        resource_account::create_resource_account(dev, b"laybapt", x"");
         admin::init_test(resource_account);
         account::create_account_for_test(signer::address_of(bapt_framework));
         coin::register<APT>(bapt_framework);    // for the deployer
@@ -472,28 +472,28 @@ module baptswap_v2::swap_v2_test {
         // update tiers to popular traded
         router_v2::update_fee_tier<admin::PopularTraded, TestBAPT, TestMAU>(admin);
         admin::is_valid_tier<admin::PopularTraded>();
-        let (popular_traded_liquidity_fee, popular_traded_treasury_fee) = admin::get_popular_traded_liquidity_fee_modifier();
+        let (popular_traded_liquidity_fee, popular_traded_treasury_fee) = admin::get_popular_traded_tier_fees();
         let total_popular_traded_fee = popular_traded_liquidity_fee + popular_traded_treasury_fee;
         assert!(swap_v2::token_fees<TestBAPT, TestMAU>() == (total_popular_traded_fee), 1);
 
         // update tiers to stable
         router_v2::update_fee_tier<admin::Stable, TestBAPT, TestMAU>(admin);
         admin::is_valid_tier<admin::Stable>();
-        let (stable_liquidity_fee, stable_treasury_fee) = admin::get_stable_liquidity_fee_modifier();
+        let (stable_liquidity_fee, stable_treasury_fee) = admin::get_stable_tier_fees();
         let total_stable_fee = stable_liquidity_fee + stable_treasury_fee;
         assert!(swap_v2::token_fees<TestBAPT, TestMAU>() == (total_stable_fee), 2);
 
         // update tiers to very stable
         router_v2::update_fee_tier<admin::VeryStable, TestBAPT, TestMAU>(admin);
         admin::is_valid_tier<admin::VeryStable>();
-        let (very_stable_liquidity_fee, very_stable_treasury_fee) = admin::get_very_stable_liquidity_fee_modifier();
+        let (very_stable_liquidity_fee, very_stable_treasury_fee) = admin::get_very_stable_tier_fees();
         let total_very_stable_fee = very_stable_liquidity_fee + very_stable_treasury_fee;
         assert!(swap_v2::token_fees<TestBAPT, TestMAU>() == (total_very_stable_fee), 3);
 
         // update tiers back to universal
         router_v2::update_fee_tier<admin::Universal, TestBAPT, TestMAU>(admin);
         admin::is_valid_tier<admin::Universal>();
-        let (universal_liquidity_fee, universal_treasury_fee) = admin::get_universal_liquidity_fee_modifier();
+        let (universal_liquidity_fee, universal_treasury_fee) = admin::get_universal_tier_fees();
         let total_universal_fee = universal_liquidity_fee + universal_treasury_fee;
         assert!(swap_v2::token_fees<TestBAPT, TestMAU>() == (total_universal_fee), 4);
 
@@ -515,28 +515,28 @@ module baptswap_v2::swap_v2_test {
 
         // update tiers to popular traded
         router_v2::update_fee_tier<admin::PopularTraded, TestBAPT, TestMAU>(admin);
-        let (popular_traded_liquidity_fee, popular_traded_treasury_fee) = admin::get_popular_traded_liquidity_fee_modifier();
+        let (popular_traded_liquidity_fee, popular_traded_treasury_fee) = admin::get_popular_traded_tier_fees();
         let total_popular_traded_fee = popular_traded_liquidity_fee + popular_traded_treasury_fee;
         let expected_updated_fees = bapt_fee_on_transfer + mau_fee_on_transfer + total_popular_traded_fee;
         assert!(swap_v2::token_fees<TestBAPT, TestMAU>() == (expected_updated_fees), 6);
 
         // update tiers to stable
         router_v2::update_fee_tier<admin::Stable, TestBAPT, TestMAU>(admin);
-        let (stable_liquidity_fee, stable_treasury_fee) = admin::get_stable_liquidity_fee_modifier();
+        let (stable_liquidity_fee, stable_treasury_fee) = admin::get_stable_tier_fees();
         let total_stable_fee = stable_liquidity_fee + stable_treasury_fee;
         let expected_updated_fees_from_stable = bapt_fee_on_transfer + mau_fee_on_transfer + total_stable_fee;
         assert!(swap_v2::token_fees<TestBAPT, TestMAU>() == (expected_updated_fees_from_stable), 7);
 
         // update tiers to very stable
         router_v2::update_fee_tier<admin::VeryStable, TestBAPT, TestMAU>(admin);
-        let (very_stable_liquidity_fee, very_stable_treasury_fee) = admin::get_very_stable_liquidity_fee_modifier();
+        let (very_stable_liquidity_fee, very_stable_treasury_fee) = admin::get_very_stable_tier_fees();
         let total_very_stable_fee = very_stable_liquidity_fee + very_stable_treasury_fee;
         let expected_updated_fees_from_very_stable = bapt_fee_on_transfer + mau_fee_on_transfer + total_very_stable_fee;
         assert!(swap_v2::token_fees<TestBAPT, TestMAU>() == (expected_updated_fees_from_very_stable), 8);
 
         // update tiers back to universal
         router_v2::update_fee_tier<admin::Universal, TestBAPT, TestMAU>(admin);
-        let (universal_liquidity_fee, universal_treasury_fee) = admin::get_universal_liquidity_fee_modifier();
+        let (universal_liquidity_fee, universal_treasury_fee) = admin::get_universal_tier_fees();
         let total_universal_fee = universal_liquidity_fee + universal_treasury_fee;
         let expected_updated_fees_from_universal = bapt_fee_on_transfer + mau_fee_on_transfer + total_universal_fee;
         assert!(swap_v2::token_fees<TestBAPT, TestMAU>() == (expected_updated_fees_from_universal), 9);
@@ -546,7 +546,7 @@ module baptswap_v2::swap_v2_test {
         admin::set_dex_treasury_fee(admin, 0);
         assert!(admin::get_dex_fees() == 0, 10);
         router_v2::update_fee_tier<admin::PopularTraded, TestBAPT, TestMAU>(admin);
-        let (popular_traded_liquidity_fee, popular_traded_treasury_fee) = admin::get_popular_traded_liquidity_fee_modifier();
+        let (popular_traded_liquidity_fee, popular_traded_treasury_fee) = admin::get_popular_traded_tier_fees();
         let total_popular_traded_fee = popular_traded_liquidity_fee + popular_traded_treasury_fee;
         let expected_updated_fees_from_popular_traded = bapt_fee_on_transfer + mau_fee_on_transfer + total_popular_traded_fee;
         assert!(swap_v2::token_fees<TestBAPT, TestMAU>() == (expected_updated_fees_from_popular_traded), 10);
