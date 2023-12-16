@@ -39,7 +39,7 @@ module baptswap_v2::swap_v2_test {
         account::create_account_for_test(signer::address_of(dev));
         account::create_account_for_test(signer::address_of(admin));
         account::create_account_for_test(signer::address_of(treasury));
-        resource_account::create_resource_account(dev, b"lay", x"");
+        resource_account::create_resource_account(dev, b"laymagic", x"");
         admin::init_test(resource_account);
         account::create_account_for_test(signer::address_of(bapt_framework));
         coin::register<APT>(bapt_framework);    // for the deployer
@@ -96,10 +96,10 @@ module baptswap_v2::swap_v2_test {
         coin::register<TestMAU>(treasury);
 
         // create pair
-        router_v2::create_pair_test<TestBAPT, TestMAU>(alice);
+        router_v2::create_pair<TestBAPT, TestMAU>(alice);
         // these are needed for transferring some of the fees since we want them in APT
-        router_v2::create_pair_test<TestBAPT, APT>(alice);
-        router_v2::create_pair_test<TestMAU, APT>(alice);
+        router_v2::create_pair<TestBAPT, APT>(alice);
+        router_v2::create_pair<TestMAU, APT>(alice);
 
         let bob_liquidity_x = 10 * pow(10, 8);
         let bob_liquidity_y = 10 * pow(10, 8);
@@ -140,10 +140,10 @@ module baptswap_v2::swap_v2_test {
         // coin::register<TestMAU>(treasury);
 
         // create pair
-        router_v2::create_pair_test<TestBAPT, TestMAU>(alice);
+        router_v2::create_pair<TestBAPT, TestMAU>(alice);
         // these are needed for transferring some of the fees since we want them in APT
-        router_v2::create_pair_test<TestBAPT, APT>(alice);
-        router_v2::create_pair_test<TestMAU, APT>(alice);
+        router_v2::create_pair<TestBAPT, APT>(alice);
+        router_v2::create_pair<TestMAU, APT>(alice);
 
         let bob_liquidity_x = 10 * pow(10, 8);
         let bob_liquidity_y = 10 * pow(10, 8);
@@ -162,7 +162,7 @@ module baptswap_v2::swap_v2_test {
     // TODO: test multi-hop functions
 
     #[test(aptos_framework = @0x1, bapt_framework = @bapt_framework, dev = @dev_2, admin = @admin, resource_account = @baptswap_v2, treasury = @treasury, alice = @0x123, bob = @0x456)]
-    fun test_stake(
+    fun test_stake_with_only_one_fee_transfer(
         aptos_framework: signer,
         bapt_framework: &signer, 
         dev: &signer,
@@ -176,7 +176,7 @@ module baptswap_v2::swap_v2_test {
         coin::register<TestBAPT>(treasury);
 
         // create pair
-        router_v2::create_pair_test<TestBAPT, APT>(alice);
+        router_v2::create_pair<TestBAPT, APT>(alice);
 
         let alice_liquidity_x = 10 * pow(10, 8);
         let alice_liquidity_y = 10 * pow(10, 8);
@@ -212,6 +212,7 @@ module baptswap_v2::swap_v2_test {
         debug::print<u64>(&coin::balance<TestBAPT>(signer::address_of(alice)));
         
         // Based on sorting of the pairs, the pair is TestBAPT-APT
+        assert!(swap_v2::is_pair_created<TestBAPT, APT>(), 1);
         let (y_team_balance_x, y_team_balance_y) = swap_v2::get_accumulated_team_fee<APT, TestBAPT, APT>();
         let (x_team_balance_x, x_team_balance_y) = swap_v2::get_accumulated_team_fee<TestBAPT, APT, TestBAPT>();
         
@@ -251,9 +252,9 @@ module baptswap_v2::swap_v2_test {
         coin::transfer<TestMAU>(bob, signer::address_of(alice), 10 * pow(10, 8));
 
         // create pair
-        router_v2::create_pair_test<TestBAPT, TestMAU>(alice);
-        router_v2::create_pair_test<TestBAPT, APT>(alice);
-        router_v2::create_pair_test<TestMAU, APT>(alice);
+        router_v2::create_pair<TestBAPT, TestMAU>(alice);
+        router_v2::create_pair<TestBAPT, APT>(alice);
+        router_v2::create_pair<TestMAU, APT>(alice);
 
         let bob_liquidity_x = 10 * pow(10, 8);
         let bob_liquidity_y = 10 * pow(10, 8);
@@ -369,7 +370,7 @@ module baptswap_v2::swap_v2_test {
         coin::register<TestBAPT>(bob);
 
         // create pair
-        router_v2::create_pair_test<TestBAPT, TestMAU>(alice);
+        router_v2::create_pair<TestBAPT, TestMAU>(alice);
 
         // initialize fee on transfer of both tokens
         fee_on_transfer::initialize_fee_on_transfer_for_test<TestBAPT>(alice, 0, 100, 100);
@@ -397,6 +398,9 @@ module baptswap_v2::swap_v2_test {
         // treasury wallet receives the treasury fee
         debug::print<u64>(&coin::balance<TestBAPT>(@treasury));
         debug::print<u64>(&coin::balance<TestMAU>(@treasury));
+
+        // remove some liquidity
+        router_v2::remove_liquidity<TestBAPT, TestMAU>(bob, 1 * pow(10, 6), 0, 0);
     }
         
     #[test(aptos_framework = @0x1, bapt_framework = @bapt_framework, dev = @dev_2, admin = @admin, resource_account = @baptswap_v2, treasury = @treasury, alice = @0x123, bob = @0x456)]
@@ -467,24 +471,28 @@ module baptswap_v2::swap_v2_test {
 
         // update tiers to popular traded
         router_v2::update_fee_tier<admin::PopularTraded, TestBAPT, TestMAU>(admin);
+        admin::is_valid_tier<admin::PopularTraded>();
         let (popular_traded_liquidity_fee, popular_traded_treasury_fee) = admin::get_popular_traded_liquidity_fee_modifier();
         let total_popular_traded_fee = popular_traded_liquidity_fee + popular_traded_treasury_fee;
         assert!(swap_v2::token_fees<TestBAPT, TestMAU>() == (total_popular_traded_fee), 1);
 
         // update tiers to stable
         router_v2::update_fee_tier<admin::Stable, TestBAPT, TestMAU>(admin);
+        admin::is_valid_tier<admin::Stable>();
         let (stable_liquidity_fee, stable_treasury_fee) = admin::get_stable_liquidity_fee_modifier();
         let total_stable_fee = stable_liquidity_fee + stable_treasury_fee;
         assert!(swap_v2::token_fees<TestBAPT, TestMAU>() == (total_stable_fee), 2);
 
         // update tiers to very stable
         router_v2::update_fee_tier<admin::VeryStable, TestBAPT, TestMAU>(admin);
+        admin::is_valid_tier<admin::VeryStable>();
         let (very_stable_liquidity_fee, very_stable_treasury_fee) = admin::get_very_stable_liquidity_fee_modifier();
         let total_very_stable_fee = very_stable_liquidity_fee + very_stable_treasury_fee;
         assert!(swap_v2::token_fees<TestBAPT, TestMAU>() == (total_very_stable_fee), 3);
 
         // update tiers back to universal
         router_v2::update_fee_tier<admin::Universal, TestBAPT, TestMAU>(admin);
+        admin::is_valid_tier<admin::Universal>();
         let (universal_liquidity_fee, universal_treasury_fee) = admin::get_universal_liquidity_fee_modifier();
         let total_universal_fee = universal_liquidity_fee + universal_treasury_fee;
         assert!(swap_v2::token_fees<TestBAPT, TestMAU>() == (total_universal_fee), 4);
@@ -532,6 +540,71 @@ module baptswap_v2::swap_v2_test {
         let total_universal_fee = universal_liquidity_fee + universal_treasury_fee;
         let expected_updated_fees_from_universal = bapt_fee_on_transfer + mau_fee_on_transfer + total_universal_fee;
         assert!(swap_v2::token_fees<TestBAPT, TestMAU>() == (expected_updated_fees_from_universal), 9);
+
+        // update dex fees universally and then update tiers to popular traded
+        admin::set_dex_liquidity_fee(admin, 0);
+        admin::set_dex_treasury_fee(admin, 0);
+        assert!(admin::get_dex_fees() == 0, 10);
+        router_v2::update_fee_tier<admin::PopularTraded, TestBAPT, TestMAU>(admin);
+        let (popular_traded_liquidity_fee, popular_traded_treasury_fee) = admin::get_popular_traded_liquidity_fee_modifier();
+        let total_popular_traded_fee = popular_traded_liquidity_fee + popular_traded_treasury_fee;
+        let expected_updated_fees_from_popular_traded = bapt_fee_on_transfer + mau_fee_on_transfer + total_popular_traded_fee;
+        assert!(swap_v2::token_fees<TestBAPT, TestMAU>() == (expected_updated_fees_from_popular_traded), 10);
+    }
+
+    #[test(aptos_framework = @0x1, bapt_framework = @bapt_framework, dev = @dev_2, admin = @admin, resource_account = @baptswap_v2, treasury = @treasury, alice = @0x123, bob = @0x456)]
+    // test multi-hop swap functions
+    fun test_multi_hop_swaps(
+        aptos_framework: signer,
+        bapt_framework: &signer, 
+        dev: &signer,
+        admin: &signer,
+        resource_account: &signer,
+        treasury: &signer,
+        bob: &signer,
+        alice: &signer
+    ) {
+        setup_test_with_genesis(aptos_framework, bapt_framework, dev, admin, treasury, resource_account, alice, bob);
+
+        coin::transfer<TestBAPT>(alice, signer::address_of(bob), 10 * pow(10, 8));
+        coin::transfer<TestMAU>(bob, signer::address_of(alice), 10 * pow(10, 8));
+
+        coin::register<TestMAU>(alice);
+        coin::register<TestBAPT>(bob);
+
+        // create pair
+        // router_v2::create_pair<TestBAPT, TestMAU>(alice);
+        router_v2::create_pair<TestBAPT, APT>(alice);
+        router_v2::create_pair<TestMAU, APT>(alice);
+
+        let bob_liquidity_x = 2 * pow(10, 8);
+        let bob_liquidity_y = 2 * pow(10, 8);
+        let alice_liquidity_x = 2 * pow(10, 8);
+        let alice_liquidity_y = 2 * pow(10, 8);
+
+        // Add liquidity for BAPT-APT and MAU-APT
+        router_v2::add_liquidity<TestBAPT, APT>(bob, bob_liquidity_x, bob_liquidity_y, 0, 0);
+        router_v2::add_liquidity<TestMAU, APT>(alice, alice_liquidity_x, alice_liquidity_y, 0, 0);
+
+        // swap without fee on transfer 
+        let input_x = 2 * pow(10, 6);
+        assert!(!swap_v2::is_pair_created<TestBAPT, TestMAU>() && !swap_v2::is_pair_created<TestMAU, TestBAPT>(), 1);
+        router_v2::swap_exact_input<TestBAPT, APT>(alice, 10 * pow(10, 6), 0);
+        router_v2::swap_exact_input<TestMAU, APT>(alice, 10 * pow(10, 6), 0);
+        router_v2::swap_exact_input_with_one_intermediate_coin<TestBAPT, TestMAU, APT>(alice, 10 * pow(10, 6), 0);
+        router_v2::swap_exact_input_with_apt_as_intermidiate<TestMAU, TestBAPT>(alice, input_x, 0);
+
+        // swap with fee on transfer
+        fee_on_transfer::initialize_fee_on_transfer_for_test<TestBAPT>(alice, 10, 20, 30);
+        fee_on_transfer::initialize_fee_on_transfer_for_test<TestMAU>(bob, 35, 55, 15);
+
+        router_v2::register_fee_on_transfer_in_a_pair<TestBAPT, TestBAPT, APT>(alice);
+        router_v2::register_fee_on_transfer_in_a_pair<TestMAU, APT, TestMAU>(bob);
+
+        router_v2::swap_exact_input_with_one_intermediate_coin<TestBAPT, TestMAU, APT>(alice, input_x, 0);
+        router_v2::swap_exact_input_with_apt_as_intermidiate<TestMAU, TestBAPT>(alice, input_x, 0);
+
+        // TODO: test swap_exact_input_with_two_intermediate_coins
     }
 
     // #[test(dev = @dev_2_2, admin = @admin, resource_account = @baptswap_v2, treasury = @treasury, bob = @0x12345, alice = @0x12346)]

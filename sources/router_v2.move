@@ -223,7 +223,7 @@ module baptswap_v2::router_v2 {
         }
     }
 
-    public entry fun swap_exact_input_with_z_as_intermidiate<X, Y, Z>(
+    public entry fun swap_exact_input_with_one_intermediate_coin<X, Y, Z>(
         sender: &signer,
         x_in: u64,
         y_min_out: u64
@@ -234,11 +234,22 @@ module baptswap_v2::router_v2 {
         sender: &signer,
         x_in: u64,
         y_min_out: u64
-    ) { swap_exact_input_with_z_as_intermidiate<X, Y, APT>( sender, x_in, y_min_out) }
+    ) { swap_exact_input_with_one_intermediate_coin<X, Y, APT>( sender, x_in, y_min_out) }
         
     // TODO: Z is BAPT
 
     // TODO: Z is USDC
+
+    // TODO: not tested
+    public entry fun swap_exact_input_with_two_intermediate_coins<X, Y, Z, W>(
+        sender: &signer,
+        x_in: u64,
+        y_min_out: u64
+    ) {
+        let z_in = swap_exact_input_internal<X, Z>(sender, x_in, 0);    // TODO: should not be 0
+        let w_in = swap_exact_input_internal<Z, W>(sender, z_in, 0);    // TODO: should not be 0
+        swap_exact_input_internal<W, Y>(sender, w_in, y_min_out);
+    }
 
     // Swap miniumn possible amount of X to exact output amount of Y
     public entry fun swap_exact_output<X, Y>(sender: &signer, y_out: u64, x_max_in: u64) {
@@ -263,31 +274,31 @@ module baptswap_v2::router_v2 {
         x_in
     }
 
-    public fun multi_hop_exact_output<X, Y, Z>(sender: &signer, y_out: u64, x_max_in: u64) {
-        // if <X,Y> pair is created, swap X for Y
-        if (swap_v2::is_pair_created<X, Y>()) { swap_exact_output<X, Y>(sender, y_out, x_max_in) }
-        else {
-            let z_out = swap_exact_output_internal<Z, Y>(sender, y_out, 0);    // TODO: should not be 0
-            swap_exact_output_internal<X, Z>(sender, z_out, x_max_in); 
-        }   
-    }
+    // public fun multi_hop_exact_output<X, Y, Z>(sender: &signer, y_out: u64, x_max_in: u64) {
+    //     // if <X,Y> pair is created, swap X for Y
+    //     if (swap_v2::is_pair_created<X, Y>()) { swap_exact_output<X, Y>(sender, y_out, x_max_in) }
+    //     else {
+    //         let z_out = swap_exact_output_internal<Z, Y>(sender, y_out, 0);    // TODO: should not be 0
+    //         swap_exact_output_internal<X, Z>(sender, z_out, x_max_in); 
+    //     }   
+    // }
 
     // TODO: Z is BAPT
 
     // TODO: Z is USDC
 
-    public entry fun swap_exact_output_with_z_as_intermidiate<X, Y, Z>(
-        sender: &signer,
-        y_out: u64,
-        x_max_in: u64
-    ) { multi_hop_exact_output<X, Y, Z>(sender, y_out, x_max_in); }
+    // public entry fun swap_exact_output_with_z_as_intermidiate<X, Y, Z>(
+    //     sender: &signer,
+    //     y_out: u64,
+    //     x_max_in: u64
+    // ) { multi_hop_exact_output<X, Y, Z>(sender, y_out, x_max_in); }
 
-    // Z is APT
-    public entry fun swap_exact_output_with_apt_as_intermidiate<X, Y>(
-        sender: &signer,
-        y_out: u64,
-        x_max_in: u64
-    ) { swap_exact_output_with_z_as_intermidiate<X, Y, APT>( sender, y_out, x_max_in) }
+    // // Z is APT
+    // public entry fun swap_exact_output_with_apt_as_intermidiate<X, Y>(
+    //     sender: &signer,
+    //     y_out: u64,
+    //     x_max_in: u64
+    // ) { swap_exact_output_with_z_as_intermidiate<X, Y, APT>( sender, y_out, x_max_in) }
 
     fun get_amount_in_internal<X, Y>(is_x_to_y:bool, y_out_amount: u64): u64 {
         if (is_x_to_y) {
@@ -321,17 +332,6 @@ module baptswap_v2::router_v2 {
         } else {
             assert!(swap_v2::is_pair_created<Y, X>(), errors::pair_not_created());
             swap_v2::update_fee_tier<Tier, Y, X>(signer_ref);
-        }
-    }
-
-    #[test_only]
-    public entry fun create_pair_test<X, Y>(
-        sender: &signer,
-    ) {
-        if (swap_utils_v2::sort_token_type<X, Y>()) {
-            swap_v2::create_pair_internal_test<X, Y>(sender);
-        } else {
-            swap_v2::create_pair_internal_test<Y, X>(sender);
         }
     }
 }
