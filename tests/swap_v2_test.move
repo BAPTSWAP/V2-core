@@ -185,11 +185,28 @@ module baptswap_v2::swap_v2_test {
 
         // provide liquidity 
         router_v2::add_liquidity<TestBAPT, TestMAU>(bob, bob_liquidity_x, bob_liquidity_y, 0, 0);
+        let (x_reserve, y_reserve, _) = swap_v2::token_reserves<TestBAPT, TestMAU>();
+        assert!(x_reserve == bob_liquidity_x, 1);
+        assert!(y_reserve == bob_liquidity_y, 2);
         router_v2::add_liquidity<TestBAPT, TestMAU>(alice, alice_liquidity_x, alice_liquidity_y, 0, 0);
+        let (x_reserve, y_reserve, _) = swap_v2::token_reserves<TestBAPT, TestMAU>();
+        
+        debug::print<u64>(&(bob_liquidity_y + alice_liquidity_y));
+        debug::print<u64>(&y_reserve);
 
         // remove liquidity
         router_v2::remove_liquidity<TestBAPT, TestMAU>(bob, 1 * pow(10, 6), 0, 0);
+        let (x_reserve, y_reserve, _) = swap_v2::token_reserves<TestBAPT, TestMAU>();
+        assert!(x_reserve == bob_liquidity_x + alice_liquidity_x - 1 * pow(10, 6), 5);
+        
+        debug::print<u64>(&(bob_liquidity_y + alice_liquidity_y));
+        debug::print<u64>(&y_reserve);
+
         router_v2::remove_liquidity<TestBAPT, TestMAU>(alice, 1 * pow(10, 6), 0, 0);
+        let (x_reserve, y_reserve, _) = swap_v2::token_reserves<TestBAPT, TestMAU>();
+        
+        debug::print<u64>(&(bob_liquidity_y + alice_liquidity_y));
+        debug::print<u64>(&y_reserve);
     }
 
     #[test(aptos_framework = @0x1, bapt_framework = @bapt_framework, dev = @dev_2, admin = @admin, resource_account = @baptswap_v2, treasury = @treasury, alice = @0x123, bob = @0x456)]
