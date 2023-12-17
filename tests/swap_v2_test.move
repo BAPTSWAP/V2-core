@@ -159,7 +159,38 @@ module baptswap_v2::swap_v2_test {
         router_v2::swap_exact_output<TestBAPT, TestMAU>(alice, 2 * pow(10, 6), MAX_U64);
     }
 
-    // TODO: test multi-hop functions
+    #[test(aptos_framework = @0x1, bapt_framework = @bapt_framework, dev = @dev_2, admin = @admin, treasury = @treasury, resource_account = @baptswap_v2, alice = @0x123, bob = @0x456)]
+    fun test_liquidity_addition_and_removal(
+        aptos_framework: signer,
+        bapt_framework: &signer,
+        dev: &signer,
+        admin: &signer,
+        treasury: &signer,
+        resource_account: &signer,
+        alice: &signer,
+        bob: &signer,
+    ) {
+        setup_test_with_genesis(aptos_framework, bapt_framework, dev, admin, treasury, resource_account, alice, bob);
+
+        coin::transfer<TestBAPT>(alice, signer::address_of(bob), 10 * pow(10, 8));
+        coin::transfer<TestMAU>(bob, signer::address_of(alice), 10 * pow(10, 8));
+
+        // create pair
+        router_v2::create_pair<TestBAPT, TestMAU>(alice);
+
+        let bob_liquidity_x = 10 * pow(10, 8);
+        let bob_liquidity_y = 10 * pow(10, 8);
+        let alice_liquidity_x = 2 * pow(10, 8);
+        let alice_liquidity_y = 4 * pow(10, 8);
+
+        // provide liquidity 
+        router_v2::add_liquidity<TestBAPT, TestMAU>(bob, bob_liquidity_x, bob_liquidity_y, 0, 0);
+        router_v2::add_liquidity<TestBAPT, TestMAU>(alice, alice_liquidity_x, alice_liquidity_y, 0, 0);
+
+        // remove liquidity
+        router_v2::remove_liquidity<TestBAPT, TestMAU>(bob, 1 * pow(10, 6), 0, 0);
+        router_v2::remove_liquidity<TestBAPT, TestMAU>(alice, 1 * pow(10, 6), 0, 0);
+    }
 
     #[test(aptos_framework = @0x1, bapt_framework = @bapt_framework, dev = @dev_2, admin = @admin, resource_account = @baptswap_v2, treasury = @treasury, alice = @0x123, bob = @0x456)]
     fun test_stake_with_only_one_fee_transfer(
