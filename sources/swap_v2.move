@@ -513,7 +513,7 @@ module baptswap_v2::swap_v2 {
     }
 
     /// Swap X to Y, X is in and Y is out. This method assumes amount_out_min is 0
-    public(friend) fun swap_exact_x_to_y_direct<X, Y>(
+    fun swap_exact_x_to_y_direct<X, Y>(
         coins_in: coin::Coin<X>
     ): (coin::Coin<X>, coin::Coin<Y>) acquires TokenPairReserve, TokenPairMetadata {
         let amount_in = coin::value<X>(&coins_in);
@@ -651,13 +651,8 @@ module baptswap_v2::swap_v2 {
     #[view]
     // Get the current reserves of T0 and T1 with the latest updated timestamp
     public fun token_reserves<X, Y>(): (u64, u64, u64) acquires TokenPairReserve {
-        if (swap_utils_v2::sort_token_type<X, Y>()) {
-            let reserve = borrow_global<TokenPairReserve<X, Y>>(constants::get_resource_account_address());
-            (reserve.reserve_x, reserve.reserve_y, reserve.block_timestamp_last)
-        } else {
-            let reserve = borrow_global<TokenPairReserve<Y, X>>(constants::get_resource_account_address());
-            (reserve.reserve_y, reserve.reserve_x, reserve.block_timestamp_last)
-        }
+        let reserve = borrow_global<TokenPairReserve<X, Y>>(constants::get_resource_account_address());
+        (reserve.reserve_x, reserve.reserve_y, reserve.block_timestamp_last)
     }
 
     #[view]

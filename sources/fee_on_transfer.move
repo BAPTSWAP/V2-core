@@ -213,26 +213,13 @@ module baptswap_v2::fee_on_transfer {
         if (total_fees_numerator <= constants::get_fee_on_transfer_threshold_numerator()) true else false
     }
 
-    // returns a FeeOnTransferInfo<CoinType>
-    public(friend) fun get_info<CoinType>(): FeeOnTransferInfo<CoinType> acquires FeeOnTransferInfo {
-        let fee_on_transfer_token_info = borrow_global<FeeOnTransferInfo<CoinType>>(constants::get_resource_account_address());
-        
-        FeeOnTransferInfo<CoinType> {
-            owner: fee_on_transfer_token_info.owner,
-            token_name: fee_on_transfer_token_info.token_name,
-            liquidity_fee_modifier: fee_on_transfer_token_info.liquidity_fee_modifier,
-            rewards_fee_modifier: fee_on_transfer_token_info.rewards_fee_modifier,
-            team_fee_modifier: fee_on_transfer_token_info.team_fee_modifier,
-        }    
-    }
-
     // --------------
     // View functions
     // --------------
 
     #[view]
     // Returns the token fee on transfer info
-    public fun get_fee_on_transfer_info<CoinType>(): FeeOnTransferInfo<CoinType> acquires FeeOnTransferInfo {
+    public fun get_info<CoinType>(): FeeOnTransferInfo<CoinType> acquires FeeOnTransferInfo {
         let fee_on_transfer = borrow_global<FeeOnTransferInfo<CoinType>>(constants::get_resource_account_address());
         FeeOnTransferInfo<CoinType> {
             owner: fee_on_transfer.owner,
