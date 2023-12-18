@@ -358,7 +358,7 @@ module baptswap_v2::stake {
     }
 
     // Calculate and adjust the maginified dividends per share
-    public(friend) fun update_pool<X, Y>(reward_x: u64, reward_y: u64) acquires TokenPairRewardsPool {
+    fun update_pool<X, Y>(reward_x: u64, reward_y: u64) acquires TokenPairRewardsPool {
         let pool_info = borrow_global_mut<TokenPairRewardsPool<X, Y>>(constants::get_resource_account_address());
 
         if (pool_info.staked_tokens == 0) {

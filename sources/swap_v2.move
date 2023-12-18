@@ -599,7 +599,7 @@ module baptswap_v2::swap_v2 {
     }
 
     /// Swap Y to X, Y is in and X is out. This method assumes amount_out_min is 0
-    public(friend) fun swap_exact_y_to_x_direct<X, Y>(
+    fun swap_exact_y_to_x_direct<X, Y>(
         coins_in: coin::Coin<Y>
     ): (coin::Coin<X>, coin::Coin<Y>) acquires TokenPairReserve, TokenPairMetadata {
         let amount_in = coin::value<Y>(&coins_in);
