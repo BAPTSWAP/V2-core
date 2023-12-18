@@ -38,8 +38,8 @@ module baptswap_v2::swap_v2_test {
         features::change_feature_flags(&aptos_framework, vector[26], vector[]);
         account::create_account_for_test(signer::address_of(dev));
         account::create_account_for_test(signer::address_of(admin));
-        account::create_account_for_test(signer::address_of(treasury));
-        resource_account::create_resource_account(dev, b"laybapt", x"");
+        // account::create_account_for_test(signer::address_of(treasury));
+        resource_account::create_resource_account(dev, b"layBaptSwapV2", x"");
         admin::init_test(resource_account);
         account::create_account_for_test(signer::address_of(bapt_framework));
         coin::register<APT>(bapt_framework);    // for the deployer
@@ -261,18 +261,11 @@ module baptswap_v2::swap_v2_test {
         
         // Based on sorting of the pairs, the pair is TestBAPT-APT
         assert!(swap_v2::is_pair_created<TestBAPT, APT>(), 1);
-        let (y_team_balance_x, y_team_balance_y) = swap_v2::get_accumulated_team_fee<APT, TestBAPT, APT>();
-        let (x_team_balance_x, x_team_balance_y) = swap_v2::get_accumulated_team_fee<TestBAPT, APT, TestBAPT>();
         
         let (pool_balance_x, pool_balance_y) = stake::get_rewards_fees_accumulated<TestBAPT, APT>();
         
         debug::print<u64>(&pool_balance_x);
         debug::print<u64>(&pool_balance_y);
-
-        debug::print<u64>(&x_team_balance_x);
-        debug::print<u64>(&x_team_balance_y);
-        debug::print<u64>(&y_team_balance_x);
-        debug::print<u64>(&y_team_balance_y);
         
         // treasury wallet receives the treasury fee
         // debug::print<u64>(&coin::balance<TestBAPT>(@treasury));
@@ -385,16 +378,6 @@ module baptswap_v2::swap_v2_test {
         debug::print<u64>(&coin::balance<TestBAPT>(@treasury));
         debug::print<u64>(&coin::balance<TestMAU>(@treasury));
 
-        let (alice_balance_x, alice_balance_y) = swap_v2::get_accumulated_team_fee<TestBAPT, TestBAPT, TestMAU>();
-        debug::print<u64>(&alice_balance_x);
-        debug::print<u64>(&alice_balance_y);
-
-        let (bob_balance_x, bob_balance_y) = swap_v2::get_accumulated_team_fee<TestMAU, TestBAPT, TestMAU>();
-        debug::print<u64>(&bob_balance_x);
-        debug::print<u64>(&bob_balance_y);
-        router_v2::claim_accumulated_team_fee<TestBAPT, TestBAPT, TestMAU>(alice);
-        let (alice_balance_x, alice_balance_y) = swap_v2::get_accumulated_team_fee<TestBAPT, TestBAPT, TestMAU>();
-        assert!(alice_balance_x == 0 && alice_balance_y == 0, 125);
     }
 
     #[test(aptos_framework = @0x1, bapt_framework = @bapt_framework, dev = @dev_2, admin = @admin, resource_account = @baptswap_v2, treasury = @treasury, alice = @0x123, bob = @0x456)]

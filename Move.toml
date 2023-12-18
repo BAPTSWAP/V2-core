@@ -1,22 +1,20 @@
 [package]
 name = "BaptswapV2"
-version = "0.3.1"
+version = "1.0.0"
 authors = []
 
-# TODO: set addresses
 [addresses]
-bapt_framework = "b1d76027a907d3597deb415de1f15103bf36e933468afa41d758487e1b62a663"
-baptswap_v2 = "5bedc9cd0928dad37ebe34de1779096f3a1d3dfecdd61ffcaf6062f2bd8eaf79"
-dev_2 = "97c8aca6082f2ef7a0046c72eb81ebf203ca23086baf15557579570c86a89fd3"
+baptswap_v2 = "5890c79805c61ec2a81955de6046fc6fe97554f6027c06a62dd321bba3367eec"
+bapt_framework = "d0ec361a55b327913690b2851cec05f1e017ec6c647689cae051644f667a1ddb"
+dev_2 = "438f261f7d74f1b04d3558165b0c91df8caa623f5adb8e3dc6427f8c145fbbbb"
 
-treasury = "0x438f261f7d74f1b04d3558165b0c91df8caa623f5adb8e3dc6427f8c145fbbbb"
-admin = "0x6b8cb2f16463a768ed4cd38b91494dfa902195a6f3675e232d007e8d29915811"
+admin = "6dc7c3b14905bff00bd58cce4b140b86f2bf4814bd72e8c95caec370ed5fe41c"
+treasury = "6dc7c3b14905bff00bd58cce4b140b86f2bf4814bd72e8c95caec370ed5fe41c"
 
 alice = "0x123"
 bob = "0x456"
 
 [dev-addresses]
-
 
 [dependencies.AptosFramework]
 git = "https://github.com/aptos-labs/aptos-core.git"

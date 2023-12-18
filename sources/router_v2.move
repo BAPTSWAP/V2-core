@@ -62,60 +62,6 @@ module baptswap_v2::router_v2 {
         stake::claim_rewards<X, Y>(sender);
     }
 
-    // claim team fees in a given pair; claimed by the counterpart token callable by token owners.
-    // Panics if the accumualted fees are zero
-    public entry fun claim_accumulated_team_fee<CoinType, X, Y>(sender: &signer) {
-        assert!(type_info::type_of<CoinType>() == type_info::type_of<X>() || type_info::type_of<CoinType>() == type_info::type_of<Y>(), errors::coin_type_does_not_match_x_or_y());
-        if (swap_utils_v2::sort_token_type<X, Y>()) {   
-            assert!(swap_v2::is_pair_created<X, Y>(), errors::pair_not_created()); 
-            claim_accumulated_team_fee_internal<CoinType, X, Y>(sender);
-        } else {
-            assert!(swap_v2::is_pair_created<Y, X>(), errors::pair_not_created());
-            claim_accumulated_team_fee_internal<CoinType, Y, X>(sender);
-        }
-    }
-
-    fun claim_accumulated_team_fee_internal<CoinType, X, Y>(sender: &signer) {
-        // based on type
-        if (type_info::type_of<CoinType>() == type_info::type_of<X>()) {
-            // assert the signer is the token owner
-            assert!(deployer::is_coin_owner<X>(sender), errors::not_owner());
-            let (team_balance_x, team_balance_y) = swap_v2::get_accumulated_team_fee<X, X, Y>();
-            // if team balance x > 0, withdraw it and send it to the signer address
-            if (swap_v2::is_fee_on_transfer_registered<X, X, Y>() && team_balance_x > 0) {
-                // withdraw accumulated fees, and send it to the signer address
-                let team_fee_x_coins = swap_v2::extract_team_fee_x<X, X, Y>(team_balance_x);
-                coin::deposit<X>(fee_on_transfer::get_owner<X>(), team_fee_x_coins);
-            };
-            // if team balance y > 0, withdraw it and send it to the signer address
-            if (swap_v2::is_fee_on_transfer_registered<X, X, Y>() && team_balance_y > 0) {
-                // withdraw accumulated fees, and send it to the signer address
-                let team_fee_y_coins = swap_v2::extract_team_fee_y<X, X, Y>(team_balance_y);
-                coin::deposit<Y>(fee_on_transfer::get_owner<X>(), team_fee_y_coins);
-            };
-        } else {
-            // assert the signer is the token owner
-            assert!(deployer::is_coin_owner<Y>(sender), errors::not_owner());
-            let (team_balance_x, team_balance_y) = swap_v2::get_accumulated_team_fee<Y, X, Y>();
-            // if team balance x > 0, withdraw it and send it to the signer address
-            if (swap_v2::is_fee_on_transfer_registered<Y, X, Y>() && team_balance_x > 0) {
-                // assert accumulated fees are not zero 
-                assert!(team_balance_x > 0, errors::insufficient_amount());
-                // withdraw accumulated fees, and send it to the signer address
-                let team_fee_x_coins = swap_v2::extract_team_fee_x<Y, X, Y>(team_balance_x);
-                coin::deposit<X>(fee_on_transfer::get_owner<Y>(), team_fee_x_coins);
-            };
-            // if team balance y > 0, withdraw it and send it to the signer address
-            if (swap_v2::is_fee_on_transfer_registered<Y, X, Y>() && team_balance_y > 0) {
-                // assert accumulated fees are not zero 
-                assert!(team_balance_y > 0, errors::insufficient_amount());
-                // withdraw accumulated fees, and send it to the signer address
-                let team_fee_y_coins = swap_v2::extract_team_fee_y<Y, X, Y>(team_balance_y);
-                coin::deposit<Y>(fee_on_transfer::get_owner<Y>(), team_fee_y_coins);
-            };
-        }
-    }
-
     // Add Liquidity, create pair if it's needed
     public entry fun add_liquidity<X, Y>(
         sender: &signer,

@@ -76,10 +76,6 @@ module baptswap_v2::swap_v2 {
         balance_x: Coin<X>,
         // T1 token balance
         balance_y: Coin<Y>,
-        // T0 team balance
-        team_balance_x: TeamBalance<X, Y>,
-        // T1 team balance
-        team_balance_y: TeamBalance<X, Y>, 
         // Mint capacity of LP Token
         mint_cap: coin::MintCapability<LPToken<X, Y>>,
         // Burn capacity of LP Token
@@ -87,12 +83,6 @@ module baptswap_v2::swap_v2 {
         // Freeze capacity of LP Token
         freeze_cap: coin::FreezeCapability<LPToken<X, Y>>,
     }
-
-    struct TeamBalance<phantom X, phantom Y> has store, key {
-        x: Coin<X>,
-        y: Coin<Y>
-    }
-
     // Stores the reservation info required for the token pairs
     struct TokenPairReserve<phantom X, phantom Y> has key {
         reserve_x: u64,
@@ -435,8 +425,6 @@ module baptswap_v2::swap_v2 {
                 rewards_fee: 0,
                 balance_x: coin::zero<X>(),
                 balance_y: coin::zero<Y>(),
-                team_balance_x: TeamBalance { x: coin::zero<X>(), y: coin::zero<Y>() },
-                team_balance_y: TeamBalance { x: coin::zero<X>(), y: coin::zero<Y>() },
                 burn_cap,
                 freeze_cap,
                 mint_cap
@@ -508,7 +496,9 @@ module baptswap_v2::swap_v2 {
         // distribute fees 
         distribute_dex_fees<Y, X, Y>(sender, amount_out);
         // based on whether Y fee_on_transfer is registered
-        distribute_fee_on_transfer_fees<Y, X, Y>(sender, amount_out);
+        if (is_fee_on_transfer_registered<Y, X, Y>()) {
+            distribute_fee_on_transfer_fees<Y, X, Y>(sender, amount_out);
+        };
         amount_out
     }
 
@@ -539,7 +529,9 @@ module baptswap_v2::swap_v2 {
         // distribute fees 
         distribute_dex_fees<Y, X, Y>(sender, amount_out);
         // based on whether Y fee_on_transfer is registered
-        distribute_fee_on_transfer_fees<Y, X, Y>(sender, amount_out);
+        if (is_fee_on_transfer_registered<Y, X, Y>()) {
+            distribute_fee_on_transfer_fees<Y, X, Y>(sender, amount_out);
+        };
         amount_in
     }
 
@@ -566,7 +558,9 @@ module baptswap_v2::swap_v2 {
         // distribute fees 
         distribute_dex_fees<X, X, Y>(sender, amount_out);
         // based on whether X fee_on_transfer is registered
-        distribute_fee_on_transfer_fees<X, X, Y>(sender, amount_out);
+        if (is_fee_on_transfer_registered<X, X, Y>()) {
+            distribute_fee_on_transfer_fees<X, X, Y>(sender, amount_out);
+        };
         coin::destroy_zero(coins_y_out); // or others ways to drop `coins_y_out`
         amount_out
     }
@@ -585,7 +579,9 @@ module baptswap_v2::swap_v2 {
         // distribute fees 
         distribute_dex_fees<X, X, Y>(sender, amount_out);
         // based on whether Y fee_on_transfer is registered
-        distribute_fee_on_transfer_fees<X, X, Y>(sender, amount_out);
+        if (is_fee_on_transfer_registered<X, X, Y>()) {
+            distribute_fee_on_transfer_fees<X, X, Y>(sender, amount_out);
+        };
         amount_in
     }
 
@@ -664,26 +660,6 @@ module baptswap_v2::swap_v2 {
             coin::value(&meta.balance_x),
             coin::value(&meta.balance_y)
         )
-    }
-
-    #[view]
-    // get team fee in a given pair
-    public fun get_accumulated_team_fee<CoinType, X, Y>(): (u64, u64) acquires TokenPairMetadata {
-        if (swap_utils_v2::sort_token_type<X, Y>()) {
-            let metadata = borrow_global<TokenPairMetadata<X, Y>>(constants::get_resource_account_address());
-            if (type_info::type_of<CoinType>() == type_info::type_of<X>()) {
-                (coin::value(&metadata.team_balance_x.x), coin::value(&metadata.team_balance_x.y))
-            } else {
-                (coin::value(&metadata.team_balance_y.x), coin::value(&metadata.team_balance_y.y))
-            }
-        } else {
-            let metadata = borrow_global<TokenPairMetadata<Y, X>>(constants::get_resource_account_address());
-            if (type_info::type_of<CoinType>() == type_info::type_of<Y>()) {
-                (coin::value(&metadata.team_balance_x.x), coin::value(&metadata.team_balance_x.y))
-            } else {
-                (coin::value(&metadata.team_balance_y.x), coin::value(&metadata.team_balance_y.y))
-            }
-        }
     }
 
     // Obtain the LP token balance of `addr`.
@@ -895,8 +871,6 @@ module baptswap_v2::swap_v2 {
                 calculate_fee_on_transfer_amounts<Y>(amount)
             } else { (0u128, 0u128, 0u128) };
 
-            let metadata = borrow_global_mut<TokenPairMetadata<X, Y>>(constants::get_resource_account_address());
-
             // extract fees
             // let liquidity_x_fee_coins = coin::withdraw<X>(signer_ref, ((liquidity_amount_x + liquidity_amount_y) as u64));
 
@@ -916,8 +890,8 @@ module baptswap_v2::swap_v2 {
                 stake::distribute_rewards<Y, X>(coin::zero<Y>(), rewards_coins_to_yx_pool);
             };
             // team
-            coin::merge(&mut metadata.team_balance_x.x, x_team_x_coins);
-            coin::merge(&mut metadata.team_balance_y.x, y_team_x_coins);
+            aptos_account::deposit_coins<X>(fee_on_transfer::get_owner<X>(), x_team_x_coins);
+            aptos_account::deposit_coins<X>(fee_on_transfer::get_owner<Y>(), y_team_x_coins);
         }
         /*
             if cointype is y and is registered: 
@@ -938,8 +912,6 @@ module baptswap_v2::swap_v2 {
                 calculate_fee_on_transfer_amounts<Y>(amount)
             } else { (0u128, 0u128, 0u128) };
 
-            let metadata = borrow_global_mut<TokenPairMetadata<X, Y>>(constants::get_resource_account_address());
-
             // extract fees
             // let liquidity_y_fee_coins = coin::withdraw<Y>(signer_ref, ((liquidity_amount_x + liquidity_amount_y) as u64));
 
@@ -959,8 +931,8 @@ module baptswap_v2::swap_v2 {
                 stake::distribute_rewards<Y, X>(rewards_coins_to_yx_pool, coin::zero<X>());
             };
             // team
-            coin::merge(&mut metadata.team_balance_x.y, x_team_y_coins);
-            coin::merge(&mut metadata.team_balance_y.y, y_team_y_coins);
+            aptos_account::deposit_coins<Y>(fee_on_transfer::get_owner<X>(), x_team_y_coins);
+            aptos_account::deposit_coins<Y>(fee_on_transfer::get_owner<Y>(), y_team_y_coins);
         }
     }
 
@@ -1172,30 +1144,5 @@ module baptswap_v2::swap_v2 {
     fun extract_y<X, Y>(amount: u64, metadata: &mut TokenPairMetadata<X, Y>): Coin<Y> {
         assert!(coin::value<Y>(&metadata.balance_y) > amount, errors::insufficient_amount());
         coin::extract(&mut metadata.balance_y, amount)
-    }
-
-    // Extract team fees
-    public(friend) fun extract_team_fee_x<CoinType, X, Y>(amount: u64): Coin<X> acquires TokenPairMetadata {
-        let metadata = borrow_global_mut<TokenPairMetadata<X, Y>>(constants::get_resource_account_address());
-        // based on type 
-        if (type_info::type_of<CoinType>() == type_info::type_of<X>()) {
-            assert!(coin::value<X>(&metadata.team_balance_x.x) == amount, errors::insufficient_amount());
-            return coin::extract(&mut metadata.team_balance_x.x, amount)
-        } else {
-            assert!(coin::value<X>(&metadata.team_balance_y.x) == amount, errors::insufficient_amount());
-            return coin::extract(&mut metadata.team_balance_y.x, amount)
-        }
-    }
-
-    public(friend) fun extract_team_fee_y<CoinType, X, Y>(amount: u64): Coin<Y> acquires TokenPairMetadata {
-        let metadata = borrow_global_mut<TokenPairMetadata<X, Y>>(constants::get_resource_account_address());
-        // based on type
-        if (type_info::type_of<CoinType>() == type_info::type_of<X>()) {
-            assert!(coin::value<Y>(&metadata.team_balance_x.y) == amount, errors::insufficient_amount());
-            return coin::extract(&mut metadata.team_balance_x.y, amount)
-        } else {
-            assert!(coin::value<Y>(&metadata.team_balance_y.y) == amount, errors::insufficient_amount());
-            return coin::extract(&mut metadata.team_balance_y.y, amount)
-        }
     }
 }
