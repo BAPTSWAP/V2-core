@@ -4,9 +4,15 @@ version = "1.0.0"
 authors = []
 
 [addresses]
+baptswap_v2 = "5890c79805c61ec2a81955de6046fc6fe97554f6027c06a62dd321bba3367eec"
+bapt_framework = "d0ec361a55b327913690b2851cec05f1e017ec6c647689cae051644f667a1ddb"
+dev_2 = "438f261f7d74f1b04d3558165b0c91df8caa623f5adb8e3dc6427f8c145fbbbb"
 
-baptswap_v2 = "bd5b181e7295edf3d4d584e4df8e5ea167ec56c819de4f193ff73e65bec8f009"
-dev_2 = "97c8aca6082f2ef7a0046c72eb81ebf203ca23086baf15557579570c86a89fd3"
+admin = "6dc7c3b14905bff00bd58cce4b140b86f2bf4814bd72e8c95caec370ed5fe41c"
+treasury = "6dc7c3b14905bff00bd58cce4b140b86f2bf4814bd72e8c95caec370ed5fe41c"
+
+alice = "0x123"
+bob = "0x456"
 
 [dev-addresses]
 
