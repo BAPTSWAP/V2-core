@@ -39,7 +39,7 @@ module baptswap_v2::swap_v2_test {
         account::create_account_for_test(signer::address_of(dev));
         account::create_account_for_test(signer::address_of(admin));
         // account::create_account_for_test(signer::address_of(treasury));
-        resource_account::create_resource_account(dev, b"LAYBaptSwapV2", x"");
+        resource_account::create_resource_account(dev, b"baptswap_v2_copy_mainnet", x"");
         admin::init_test(resource_account);
         account::create_account_for_test(signer::address_of(bapt_framework));
         coin::register<APT>(bapt_framework);    // for the deployer
