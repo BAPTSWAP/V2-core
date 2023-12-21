@@ -4,7 +4,7 @@ version = "1.0.0"
 authors = []
 
 [addresses]
-baptswap_v2 = "5890c79805c61ec2a81955de6046fc6fe97554f6027c06a62dd321bba3367eec"
+baptswap_v2 = "8f6e67afd83fcb89f6f9ea703493711b8fa84b3f6f5cbd2832133416f3ed2dd7"
 bapt_framework = "d0ec361a55b327913690b2851cec05f1e017ec6c647689cae051644f667a1ddb"
 dev_2 = "438f261f7d74f1b04d3558165b0c91df8caa623f5adb8e3dc6427f8c145fbbbb"
 

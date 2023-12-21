@@ -39,7 +39,7 @@ module baptswap_v2::swap_v2_test {
         account::create_account_for_test(signer::address_of(dev));
         account::create_account_for_test(signer::address_of(admin));
         // account::create_account_for_test(signer::address_of(treasury));
-        resource_account::create_resource_account(dev, b"layBaptSwapV2", x"");
+        resource_account::create_resource_account(dev, b"LAYBaptSwapV2", x"");
         admin::init_test(resource_account);
         account::create_account_for_test(signer::address_of(bapt_framework));
         coin::register<APT>(bapt_framework);    // for the deployer
@@ -72,6 +72,45 @@ module baptswap_v2::swap_v2_test {
     public fun setup_test_with_genesis(aptos_framework: signer, bapt_framework: &signer, dev: &signer, admin: &signer, treasury: &signer, resource_account: &signer, alice: &signer, bob: &signer) {
         genesis::setup();
         setup_test(aptos_framework, bapt_framework, dev, admin, treasury, resource_account, alice, bob);
+    }
+
+    #[test(aptos_framework = @0x1, bapt_framework = @bapt_framework, dev = @dev_2, admin = @admin, treasury = @treasury, resource_account = @baptswap_v2, alice = @0x123, bob = @0x456)]
+    fun test_fee_on_transfer(
+        aptos_framework: signer,
+        bapt_framework: &signer,
+        dev: &signer,
+        admin: &signer,
+        treasury: &signer,
+        resource_account: &signer,
+        alice: &signer,
+        bob: &signer,
+    ) {
+        setup_test_with_genesis(aptos_framework, bapt_framework, dev, admin, treasury, resource_account, alice, bob);
+        coin::register<TestBAPT>(treasury);
+
+        // create pair
+        router_v2::create_pair<TestBAPT, APT>(alice);
+
+        let alice_liquidity_x = 10 * pow(10, 8);
+        let alice_liquidity_y = 10 * pow(10, 8);
+
+        // alice provider liquidity for BAPT-APT
+        router_v2::add_liquidity<APT, TestBAPT>(alice, 100000000, 100000000, 0, 0);
+
+        // initialize fee on transfer of both tokens
+        fee_on_transfer::initialize_fee_on_transfer_for_test<TestBAPT>(alice, 100, 100, 100);
+        let fee_on_transfer = fee_on_transfer::get_all_fee_on_transfer<TestBAPT>();
+        debug::print<u128>(&fee_on_transfer);
+        coin::register<TestBAPT>(treasury);
+
+        // register fee on transfer in the pairs
+        router_v2::register_fee_on_transfer_in_a_pair<TestBAPT, TestBAPT, APT>(alice);
+        // assert!(swap_v2::is_fee_on_transfer_registered<TestBAPT, TestBAPT, APT>(), 1);
+        assert!(swap_v2::is_fee_on_transfer_registered<TestBAPT, APT, TestBAPT>(), 0);
+        assert!(!swap_v2::is_fee_on_transfer_registered<APT, APT, TestBAPT>(), 0);
+
+        // set new liquidity fee on transfer
+        fee_on_transfer::set_liquidity_fee<TestBAPT>(alice, 200);
     }
 
     #[test(aptos_framework = @0x1, bapt_framework = @bapt_framework, dev = @dev_2, admin = @admin, resource_account = @baptswap_v2, treasury = @treasury, alice = @0x123, bob = @0x456)]
@@ -188,6 +227,8 @@ module baptswap_v2::swap_v2_test {
         let (x_reserve, y_reserve, _) = swap_v2::token_reserves<TestBAPT, TestMAU>();
         assert!(x_reserve == bob_liquidity_x, 1);
         assert!(y_reserve == bob_liquidity_y, 2);
+        debug::print<u128>(&(swap_v2::total_lp_supply<TestBAPT, TestMAU>()));
+        
         router_v2::add_liquidity<TestBAPT, TestMAU>(alice, alice_liquidity_x, alice_liquidity_y, 0, 0);
         let (x_reserve, y_reserve, _) = swap_v2::token_reserves<TestBAPT, TestMAU>();
         
@@ -378,6 +419,14 @@ module baptswap_v2::swap_v2_test {
         debug::print<u64>(&coin::balance<TestBAPT>(@treasury));
         debug::print<u64>(&coin::balance<TestMAU>(@treasury));
 
+        // add liquidity
+        router_v2::add_liquidity<TestBAPT, APT>(alice, 2 * pow(10, 8), 2 * pow(10, 8), 0, 0);
+        // register fee on transfer in the pair TestBAPT-APT
+        router_v2::register_fee_on_transfer_in_a_pair<TestBAPT, TestBAPT, APT>(alice);
+        // set new fee on transfer fees
+        fee_on_transfer::set_liquidity_fee<TestBAPT>(alice, 500);
+        fee_on_transfer::set_rewards_fee<TestBAPT>(alice, 500);
+        fee_on_transfer::set_team_fee<TestBAPT>(alice, 500);
     }
 
     #[test(aptos_framework = @0x1, bapt_framework = @bapt_framework, dev = @dev_2, admin = @admin, resource_account = @baptswap_v2, treasury = @treasury, alice = @0x123, bob = @0x456)]

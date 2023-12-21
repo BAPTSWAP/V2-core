@@ -874,9 +874,6 @@ module baptswap_v2::swap_v2 {
             // extract fees
             // let liquidity_x_fee_coins = coin::withdraw<X>(signer_ref, ((liquidity_amount_x + liquidity_amount_y) as u64));
 
-            let x_team_x_coins = coin::withdraw<X>(signer_ref, (x_team_amount_from_x_ratio as u64));
-            let y_team_x_coins = coin::withdraw<X>(signer_ref, (x_team_amount_from_y_ratio as u64));
-
             // distribute fees
             // liquidity
             // coin::merge(&mut metadata.balance_x, liquidity_x_fee_coins);
@@ -890,8 +887,14 @@ module baptswap_v2::swap_v2 {
                 stake::distribute_rewards<Y, X>(coin::zero<Y>(), rewards_coins_to_yx_pool);
             };
             // team
-            aptos_account::deposit_coins<X>(fee_on_transfer::get_owner<X>(), x_team_x_coins);
-            aptos_account::deposit_coins<X>(fee_on_transfer::get_owner<Y>(), y_team_x_coins);
+            if (is_fee_on_transfer_registered<X, X, Y>()) {
+                let x_team_x_coins = coin::withdraw<X>(signer_ref, (x_team_amount_from_x_ratio as u64));
+                aptos_account::deposit_coins<X>(fee_on_transfer::get_owner<X>(), x_team_x_coins);
+            };
+            if (is_fee_on_transfer_registered<Y, X, Y>()) {
+                let y_team_x_coins = coin::withdraw<X>(signer_ref, (x_team_amount_from_y_ratio as u64));
+                aptos_account::deposit_coins<X>(fee_on_transfer::get_owner<Y>(), y_team_x_coins);
+            };
         }
         /*
             if cointype is y and is registered: 
@@ -915,9 +918,6 @@ module baptswap_v2::swap_v2 {
             // extract fees
             // let liquidity_y_fee_coins = coin::withdraw<Y>(signer_ref, ((liquidity_amount_x + liquidity_amount_y) as u64));
 
-            let x_team_y_coins = coin::withdraw<Y>(signer_ref, (y_team_amount_from_x_ratio as u64));
-            let y_team_y_coins = coin::withdraw<Y>(signer_ref, (y_team_amount_from_y_ratio as u64));
-
             // distribute fees
             // liquidity
             // coin::merge(&mut metadata.balance_y, liquidity_y_fee_coins);
@@ -931,8 +931,14 @@ module baptswap_v2::swap_v2 {
                 stake::distribute_rewards<Y, X>(rewards_coins_to_yx_pool, coin::zero<X>());
             };
             // team
-            aptos_account::deposit_coins<Y>(fee_on_transfer::get_owner<X>(), x_team_y_coins);
-            aptos_account::deposit_coins<Y>(fee_on_transfer::get_owner<Y>(), y_team_y_coins);
+            if (is_fee_on_transfer_registered<X, X, Y>()) {
+                let x_team_y_coins = coin::withdraw<Y>(signer_ref, (y_team_amount_from_x_ratio as u64));
+                aptos_account::deposit_coins<Y>(fee_on_transfer::get_owner<X>(), x_team_y_coins);
+            };
+            if (is_fee_on_transfer_registered<Y, X, Y>()) {
+                let y_team_y_coins = coin::withdraw<Y>(signer_ref, (y_team_amount_from_y_ratio as u64));
+                aptos_account::deposit_coins<Y>(fee_on_transfer::get_owner<Y>(), y_team_y_coins);
+            };
         }
     }
 
