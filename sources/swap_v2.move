@@ -496,9 +496,7 @@ module baptswap_v2::swap_v2 {
         // distribute fees 
         distribute_dex_fees<Y, X, Y>(sender, amount_out);
         // based on whether Y fee_on_transfer is registered
-        if (is_fee_on_transfer_registered<Y, X, Y>()) {
-            distribute_fee_on_transfer_fees<Y, X, Y>(sender, amount_out);
-        };
+        distribute_fee_on_transfer_fees<Y, X, Y>(sender, amount_out);
         amount_out
     }
 
@@ -529,9 +527,7 @@ module baptswap_v2::swap_v2 {
         // distribute fees 
         distribute_dex_fees<Y, X, Y>(sender, amount_out);
         // based on whether Y fee_on_transfer is registered
-        if (is_fee_on_transfer_registered<Y, X, Y>()) {
-            distribute_fee_on_transfer_fees<Y, X, Y>(sender, amount_out);
-        };
+        distribute_fee_on_transfer_fees<Y, X, Y>(sender, amount_out);
         amount_in
     }
 
@@ -558,9 +554,7 @@ module baptswap_v2::swap_v2 {
         // distribute fees 
         distribute_dex_fees<X, X, Y>(sender, amount_out);
         // based on whether X fee_on_transfer is registered
-        if (is_fee_on_transfer_registered<X, X, Y>()) {
-            distribute_fee_on_transfer_fees<X, X, Y>(sender, amount_out);
-        };
+        distribute_fee_on_transfer_fees<X, X, Y>(sender, amount_out);
         coin::destroy_zero(coins_y_out); // or others ways to drop `coins_y_out`
         amount_out
     }
@@ -579,9 +573,7 @@ module baptswap_v2::swap_v2 {
         // distribute fees 
         distribute_dex_fees<X, X, Y>(sender, amount_out);
         // based on whether Y fee_on_transfer is registered
-        if (is_fee_on_transfer_registered<X, X, Y>()) {
-            distribute_fee_on_transfer_fees<X, X, Y>(sender, amount_out);
-        };
+        distribute_fee_on_transfer_fees<X, X, Y>(sender, amount_out);
         amount_in
     }
 

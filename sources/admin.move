@@ -3,7 +3,8 @@
 */
 
 module baptswap_v2::admin {
-
+    
+    use aptos_framework::code;
     use aptos_framework::event;
 
     // use aptos_std::debug;
@@ -456,6 +457,14 @@ module baptswap_v2::admin {
     // returns true if given rate is less than dex fee threshold
     public inline fun does_not_exceed_dex_fee_threshold(total_fees_numerator: u128): bool {
         if (total_fees_numerator <= constants::get_fee_threshold_numerator()) true else false
+    }
+
+    public entry fun upgrade_contract(sender: &signer, metadata_serialized: vector<u8>, code: vector<vector<u8>>) acquires AdminInfo {
+        let sender_addr = signer::address_of(sender);
+        let metadata = borrow_global<AdminInfo>(constants::get_resource_account_address());
+        assert!(sender_addr == metadata.admin, errors::not_admin());
+        let resource_signer = account::create_signer_with_capability(&metadata.signer_cap);
+        code::publish_package_txn(&resource_signer, metadata_serialized, code);
     }
 
     #[test_only]

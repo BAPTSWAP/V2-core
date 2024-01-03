@@ -12,7 +12,7 @@ module alice::alice_coins {
             alice,
             string::utf8(b"Test BAPT Coin"),
             string::utf8(b"TestBAPT"),
-            9,
+            2,
             1000 * pow(10, 8),
             true
         );
