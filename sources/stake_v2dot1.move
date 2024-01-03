@@ -2,7 +2,7 @@
 
 */
 
-module baptswap_v2::stake {
+module baptswap_v2dot1::stake_v2dot1 {
 
     use std::signer;
 
@@ -16,14 +16,14 @@ module baptswap_v2::stake {
 
     use bapt_framework::deployer;
 
-    use baptswap_v2::admin;
-    use baptswap_v2::constants;
-    use baptswap_v2::errors;
-    use baptswap_v2::fee_on_transfer;
-    use baptswap_v2::utils;
+    use baptswap_v2dot1::admin_v2dot1;
+    use baptswap_v2dot1::constants_v2dot1;
+    use baptswap_v2dot1::errors_v2dot1;
+    use baptswap_v2dot1::fee_on_transfer_v2dot1;
+    use baptswap_v2dot1::utils_v2dot1;
 
-    friend baptswap_v2::router_v2;
-    friend baptswap_v2::swap_v2;
+    friend baptswap_v2dot1::router_v2dot1;
+    friend baptswap_v2dot1::swap_v2dot1;
 
     // Stores the rewards pool info for token pairs
     struct TokenPairRewardsPool<phantom X, phantom Y> has key {
@@ -49,17 +49,17 @@ module baptswap_v2::stake {
         sender: &signer,
         is_x_staked: bool
     ) {
-        let resource_signer = admin::get_resource_signer();
+        let resource_signer = admin_v2dot1::get_resource_signer();
         let precision_factor = math::pow(10u128, 12u8);
         // based on CoinType
         if (type_info::type_of<CoinType>() == type_info::type_of<X>()) {
-            assert!(!exists<TokenPairRewardsPool<X, Y>>(constants::get_resource_account_address()), errors::already_initialized());
+            assert!(!exists<TokenPairRewardsPool<X, Y>>(constants_v2dot1::get_resource_account_address()), errors_v2dot1::already_initialized());
             // Assert initializer is the owner of either X or Y
-            assert!(deployer::is_coin_owner<X>(sender), errors::not_owner());
+            assert!(deployer::is_coin_owner<X>(sender), errors_v2dot1::not_owner());
             // Assert either of the fee_on_transfer is intialized 
-            assert!(fee_on_transfer::is_created<X>(), errors::fee_on_transfer_not_initialized());
+            assert!(fee_on_transfer_v2dot1::is_created<X>(), errors_v2dot1::fee_on_transfer_not_initialized());
             // Create the pool resource
-            let resource_signer = admin::get_resource_signer();
+            let resource_signer = admin_v2dot1::get_resource_signer();
             let precision_factor = math::pow(10u128, 12u8);
             move_to<TokenPairRewardsPool<X, Y>>(
                 &resource_signer,
@@ -74,11 +74,11 @@ module baptswap_v2::stake {
                 }
             );
         } else {
-            assert!(!exists<TokenPairRewardsPool<Y, X>>(constants::get_resource_account_address()), errors::already_initialized());
+            assert!(!exists<TokenPairRewardsPool<Y, X>>(constants_v2dot1::get_resource_account_address()), errors_v2dot1::already_initialized());
             // Assert initializer is the owner of either X or Y
-            assert!(deployer::is_coin_owner<Y>(sender), errors::not_owner());
+            assert!(deployer::is_coin_owner<Y>(sender), errors_v2dot1::not_owner());
             // Assert either of the fee_on_transfer is intialized
-            assert!(fee_on_transfer::is_created<Y>(), errors::fee_on_transfer_not_initialized());
+            assert!(fee_on_transfer_v2dot1::is_created<Y>(), errors_v2dot1::fee_on_transfer_not_initialized());
             // Create the pool resource
             move_to<TokenPairRewardsPool<Y, X>>(
                 &resource_signer,
@@ -103,8 +103,8 @@ module baptswap_v2::stake {
     ) acquires TokenPairRewardsPool, RewardsPoolUserInfo {
         let account_address = signer::address_of(sender);
 
-        assert!(exists<TokenPairRewardsPool<X, Y>>(constants::get_resource_account_address()), errors::pool_not_created());
-        let pool_info = borrow_global_mut<TokenPairRewardsPool<X, Y>>(constants::get_resource_account_address());
+        assert!(exists<TokenPairRewardsPool<X, Y>>(constants_v2dot1::get_resource_account_address()), errors_v2dot1::pool_not_created());
+        let pool_info = borrow_global_mut<TokenPairRewardsPool<X, Y>>(constants_v2dot1::get_resource_account_address());
 
         if (pool_info.is_x_staked) {
             if (!exists<RewardsPoolUserInfo<X, Y, X>>(account_address)) {
@@ -126,21 +126,21 @@ module baptswap_v2::stake {
                 
                 if (pending_reward_x > 0) {
                     // Check/register x and extract from pool
-                    utils::check_or_register_coin_store<X>(sender);
+                    utils_v2dot1::check_or_register_coin_store<X>(sender);
                     let x_out = coin::extract<X>(&mut pool_info.balance_x, pending_reward_x);
                     coin::deposit(signer::address_of(sender), x_out);
                 };
 
                 if (pending_reward_y > 0) {
                     // Check/register y and extract from pool
-                    utils::check_or_register_coin_store<Y>(sender);
+                    utils_v2dot1::check_or_register_coin_store<Y>(sender);
                     let y_out = coin::extract<Y>(&mut pool_info.balance_y, pending_reward_y);
                     coin::deposit(signer::address_of(sender), y_out);
                 };
             };
 
             if (amount > 0) {
-                utils::transfer_in<X>(&mut user_info.staked_tokens, sender, amount);
+                utils_v2dot1::transfer_in<X>(&mut user_info.staked_tokens, sender, amount);
                 pool_info.staked_tokens = pool_info.staked_tokens + amount;
             };
 
@@ -167,21 +167,21 @@ module baptswap_v2::stake {
                 
                 if (pending_reward_x > 0) {
                     // Check/register x and extract from pool
-                    utils::check_or_register_coin_store<X>(sender);
+                    utils_v2dot1::check_or_register_coin_store<X>(sender);
                     let x_out = coin::extract<X>(&mut pool_info.balance_x, pending_reward_x);
                     coin::deposit(signer::address_of(sender), x_out);
                 };
 
                 if (pending_reward_y > 0) {
                     // Check/register y and extract from pool
-                    utils::check_or_register_coin_store<Y>(sender);
+                    utils_v2dot1::check_or_register_coin_store<Y>(sender);
                     let y_out = coin::extract<Y>(&mut pool_info.balance_y, pending_reward_y);
                     coin::deposit(signer::address_of(sender), y_out);
                 };
             };
 
             if (amount > 0) {
-                utils::transfer_in<Y>(&mut user_info.staked_tokens, sender, amount);
+                utils_v2dot1::transfer_in<Y>(&mut user_info.staked_tokens, sender, amount);
                 pool_info.staked_tokens = pool_info.staked_tokens + amount;
             };
 
@@ -196,15 +196,15 @@ module baptswap_v2::stake {
         amount: u64
     ) acquires TokenPairRewardsPool, RewardsPoolUserInfo {
         let account_address = signer::address_of(sender);
-        assert!(exists<TokenPairRewardsPool<X, Y>>(constants::get_resource_account_address()), errors::pool_not_created());
-        let pool_info = borrow_global_mut<TokenPairRewardsPool<X, Y>>(constants::get_resource_account_address());
+        assert!(exists<TokenPairRewardsPool<X, Y>>(constants_v2dot1::get_resource_account_address()), errors_v2dot1::pool_not_created());
+        let pool_info = borrow_global_mut<TokenPairRewardsPool<X, Y>>(constants_v2dot1::get_resource_account_address());
 
         if (pool_info.is_x_staked) {
             calculate_pending_rewards<X, Y, X>(sender, amount, pool_info);
             // Transfer staked tokens out
             if (amount > 0) {
                 let user_info = borrow_global_mut<RewardsPoolUserInfo<X, Y, X>>(account_address);
-                utils::transfer_out<X>(&mut user_info.staked_tokens, sender, amount);
+                utils_v2dot1::transfer_out<X>(&mut user_info.staked_tokens, sender, amount);
                 pool_info.staked_tokens = pool_info.staked_tokens - amount;
                 // if staked tokens is 0, initialize magnified_dividends_per_shares to 0
                 if (pool_info.staked_tokens == 0) {
@@ -218,7 +218,7 @@ module baptswap_v2::stake {
             // Transfer staked tokens out
             if (amount > 0) {
                 let user_info = borrow_global_mut<RewardsPoolUserInfo<X, Y, Y>>(account_address);
-                utils::transfer_out<Y>(&mut user_info.staked_tokens, sender, amount);
+                utils_v2dot1::transfer_out<Y>(&mut user_info.staked_tokens, sender, amount);
                 pool_info.staked_tokens = pool_info.staked_tokens - amount;
                 // if staked tokens is 0, initialize magnified_dividends_per_shares to 0
                 if (pool_info.staked_tokens == 0) {
@@ -240,20 +240,20 @@ module baptswap_v2::stake {
     //     sender: &signer,
     //     amount_x: u64
     // ) acquires TokenPairRewardsPool { 
-    //     assert!(exists<TokenPairRewardsPool<X, Y>>(constants::get_resource_account_address()), errors::pool_not_created());
-    //     let pool_info = borrow_global_mut<TokenPairRewardsPool<X, Y>>(constants::get_resource_account_address());
+    //     assert!(exists<TokenPairRewardsPool<X, Y>>(constants_v2dot1::get_resource_account_address()), errors_v2dot1::pool_not_created());
+    //     let pool_info = borrow_global_mut<TokenPairRewardsPool<X, Y>>(constants_v2dot1::get_resource_account_address());
 
     //     // Update pool
     //     update_pool<X, Y>(amount_x, 0);
 
     //     // Transfer in rewards
-    //     utils::transfer_in<X>(&mut pool_info.balance_x, sender, amount_x);
+    //     utils_v2dot1::transfer_in<X>(&mut pool_info.balance_x, sender, amount_x);
     // }
 
     // claim rewards
     public(friend) fun claim_rewards<X, Y>(sender: &signer) acquires TokenPairRewardsPool, RewardsPoolUserInfo {
-        assert!(exists<TokenPairRewardsPool<X, Y>>(constants::get_resource_account_address()), errors::pool_not_created());
-        let pool_info = borrow_global_mut<TokenPairRewardsPool<X, Y>>(constants::get_resource_account_address());
+        assert!(exists<TokenPairRewardsPool<X, Y>>(constants_v2dot1::get_resource_account_address()), errors_v2dot1::pool_not_created());
+        let pool_info = borrow_global_mut<TokenPairRewardsPool<X, Y>>(constants_v2dot1::get_resource_account_address());
 
         if (pool_info.is_x_staked) {
             calculate_pending_rewards<X, Y, X>(sender, 0, pool_info);
@@ -275,7 +275,7 @@ module baptswap_v2::stake {
         // based on CoinType
         if (type_info::type_of<CoinType>() == type_info::type_of<X>()) {
             let user_info = borrow_global_mut<RewardsPoolUserInfo<X, Y, X>>(account_address);
-            assert!(coin::value<X>(&mut user_info.staked_tokens) >= amount, errors::insufficient_balance());
+            assert!(coin::value<X>(&mut user_info.staked_tokens) >= amount, errors_v2dot1::insufficient_balance());
 
             // Calculate pending rewards
             let pending_reward_x = cal_pending_reward(coin::value(&user_info.staked_tokens), user_info.reward_debt_x, pool_info.magnified_dividends_per_share_x, pool_info.precision_factor);
@@ -283,20 +283,20 @@ module baptswap_v2::stake {
             
             if (pending_reward_x > 0) {
                 // Check/register x and extract from pool
-                utils::check_or_register_coin_store<X>(sender);
+                utils_v2dot1::check_or_register_coin_store<X>(sender);
                 let x_out = coin::extract<X>(&mut pool_info.balance_x, pending_reward_x);
                 coin::deposit(account_address, x_out);
             };
 
             if (pending_reward_y > 0) {
                 // Check/register y and extract from pool
-                utils::check_or_register_coin_store<Y>(sender);
+                utils_v2dot1::check_or_register_coin_store<Y>(sender);
                 let y_out = coin::extract<Y>(&mut pool_info.balance_y, pending_reward_y);
                 coin::deposit(account_address, y_out);
             };
         } else {
             let user_info = borrow_global_mut<RewardsPoolUserInfo<X, Y, Y>>(account_address);
-            assert!(coin::value<Y>(&mut user_info.staked_tokens) >= amount, errors::insufficient_balance());
+            assert!(coin::value<Y>(&mut user_info.staked_tokens) >= amount, errors_v2dot1::insufficient_balance());
 
             // Calculate pending rewards
             let pending_reward_x = cal_pending_reward(coin::value(&user_info.staked_tokens), user_info.reward_debt_x, pool_info.magnified_dividends_per_share_x, pool_info.precision_factor);
@@ -304,14 +304,14 @@ module baptswap_v2::stake {
             
             if (pending_reward_x > 0) {
                 // Check/register x and extract from pool
-                utils::check_or_register_coin_store<X>(sender);
+                utils_v2dot1::check_or_register_coin_store<X>(sender);
                 let x_out = coin::extract<X>(&mut pool_info.balance_x, pending_reward_x);
                 coin::deposit(account_address, x_out);
             };
 
             if (pending_reward_y > 0) {
                 // Check/register y and extract from pool
-                utils::check_or_register_coin_store<Y>(sender);
+                utils_v2dot1::check_or_register_coin_store<Y>(sender);
                 let y_out = coin::extract<Y>(&mut pool_info.balance_y, pending_reward_y);
                 coin::deposit(account_address, y_out);
             };
@@ -327,14 +327,14 @@ module baptswap_v2::stake {
         let account_address = signer::address_of(sender);
         // based on CoinType
         if (type_info::type_of<CoinType>() == type_info::type_of<X>()) {
-            assert!(exists<RewardsPoolUserInfo<X, Y, X>>(account_address), errors::no_stake());
+            assert!(exists<RewardsPoolUserInfo<X, Y, X>>(account_address), errors_v2dot1::no_stake());
             let user_info = borrow_global_mut<RewardsPoolUserInfo<X, Y, X>>(account_address);
-            assert!(coin::value<X>(&mut user_info.staked_tokens) >= amount, errors::insufficient_balance());
+            assert!(coin::value<X>(&mut user_info.staked_tokens) >= amount, errors_v2dot1::insufficient_balance());
             update_user_reward_debt<X, Y, X>(account_address, coin::value(&user_info.staked_tokens), pool_info);
         } else {
-            assert!(exists<RewardsPoolUserInfo<X, Y, Y>>(account_address), errors::no_stake()); 
+            assert!(exists<RewardsPoolUserInfo<X, Y, Y>>(account_address), errors_v2dot1::no_stake()); 
             let user_info = borrow_global_mut<RewardsPoolUserInfo<X, Y, Y>>(account_address);
-            assert!(coin::value<Y>(&mut user_info.staked_tokens) >= amount, errors::insufficient_balance());
+            assert!(coin::value<Y>(&mut user_info.staked_tokens) >= amount, errors_v2dot1::insufficient_balance());
             update_user_reward_debt<X, Y, Y>(account_address, coin::value(&user_info.staked_tokens), pool_info);
         }
     }
@@ -359,7 +359,7 @@ module baptswap_v2::stake {
 
     // Calculate and adjust the maginified dividends per share
     fun update_pool<X, Y>(reward_x: u64, reward_y: u64) acquires TokenPairRewardsPool {
-        let pool_info = borrow_global_mut<TokenPairRewardsPool<X, Y>>(constants::get_resource_account_address());
+        let pool_info = borrow_global_mut<TokenPairRewardsPool<X, Y>>(constants_v2dot1::get_resource_account_address());
 
         if (pool_info.staked_tokens == 0) {
             return
@@ -453,14 +453,14 @@ module baptswap_v2::stake {
 
     #[view]
     public fun is_pool_created<X, Y>(): bool {
-        exists<TokenPairRewardsPool<X, Y>>(constants::get_resource_account_address())
+        exists<TokenPairRewardsPool<X, Y>>(constants_v2dot1::get_resource_account_address())
     }
 
     #[view]
     public fun token_rewards_pool_info<X, Y>(): (u64, u64, u64, u128, u128, u128, bool) acquires TokenPairRewardsPool {
-        assert!(is_pool_created<X, Y>(), errors::pool_not_created());
+        assert!(is_pool_created<X, Y>(), errors_v2dot1::pool_not_created());
 
-        let pool = borrow_global_mut<TokenPairRewardsPool<X, Y>>(constants::get_resource_account_address());
+        let pool = borrow_global_mut<TokenPairRewardsPool<X, Y>>(constants_v2dot1::get_resource_account_address());
 
         (
             pool.staked_tokens, coin::value(&pool.balance_x), coin::value(&pool.balance_y),
@@ -472,8 +472,8 @@ module baptswap_v2::stake {
     #[view]
     // Get current accumulated fees for a token pair
     public fun get_rewards_fees_accumulated<X, Y>(): (u64, u64) acquires TokenPairRewardsPool {
-        assert!(is_pool_created<X, Y>(), errors::pool_not_created());
-        let pool = borrow_global_mut<TokenPairRewardsPool<X, Y>>(constants::get_resource_account_address());
+        assert!(is_pool_created<X, Y>(), errors_v2dot1::pool_not_created());
+        let pool = borrow_global_mut<TokenPairRewardsPool<X, Y>>(constants_v2dot1::get_resource_account_address());
 
         (coin::value<X>(&pool.balance_x), coin::value<Y>(&pool.balance_y))
     }
@@ -485,7 +485,7 @@ module baptswap_v2::stake {
         // Update pool
         update_pool<X, Y>(coin::value<X>(&rewards_x), coin::value<Y>(&rewards_y));
 
-        let rewards_pool = borrow_global_mut<TokenPairRewardsPool<X, Y>>(constants::get_resource_account_address());
+        let rewards_pool = borrow_global_mut<TokenPairRewardsPool<X, Y>>(constants_v2dot1::get_resource_account_address());
         coin::merge(&mut rewards_pool.balance_x, rewards_x);
         coin::merge(&mut rewards_pool.balance_y, rewards_y);
     }

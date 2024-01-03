@@ -1,18 +1,26 @@
 [package]
-name = "BaptswapV2"
-version = "1.0.0"
+name = "BaptswapV2.1"
+# FoT hotfix, unstake hotfix, and added migrate to V2.1 smc
+version = "2.1.0"
 authors = []
 
 [addresses]
-baptswap_v2 = "5890c79805c61ec2a81955de6046fc6fe97554f6027c06a62dd321bba3367eec"
+# core V2
+baptswap_v2 = "0x8f6e67afd83fcb89f6f9ea703493711b8fa84b3f6f5cbd2832133416f3ed2dd7"
+# core V2 hotfix
+baptswap_v2dot1 = "c991e8e9711a75623121fcd6ad06f38ea301890da05548263dfccb45000002b3"
+dev_v2dot1 = "438f261f7d74f1b04d3558165b0c91df8caa623f5adb8e3dc6427f8c145fbbbb"
+# coin deployer
 bapt_framework = "d0ec361a55b327913690b2851cec05f1e017ec6c647689cae051644f667a1ddb"
-dev_2 = "438f261f7d74f1b04d3558165b0c91df8caa623f5adb8e3dc6427f8c145fbbbb"
 
 admin = "6dc7c3b14905bff00bd58cce4b140b86f2bf4814bd72e8c95caec370ed5fe41c"
 treasury = "6dc7c3b14905bff00bd58cce4b140b86f2bf4814bd72e8c95caec370ed5fe41c"
 
 alice = "0x123"
 bob = "0x456"
+
+# coins 
+other_coins = "0xf22bede237a07e121b56d91a491eb7bcdfd1f5907926a9e58338f964a01b17fa"
 
 [dev-addresses]
 
@@ -24,7 +32,16 @@ subdir = "aptos-move/framework/aptos-framework"
 [dependencies.BaptSwap]
 local = "./packages/BaptSwap"
 
+[dependencies.BaptswapV2]
+local = "./packages/BaptswapV2"
+
 [dependencies.CoinDeployer]
 local = "./packages/CoinDeployer"
+
+[dependencies.MAU]
+local = "./packages/MAU"
+
+[dependencies.bridge]
+local = "./packages/bridge"
 
 [dev-dependencies]

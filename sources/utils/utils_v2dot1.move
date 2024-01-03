@@ -1,11 +1,11 @@
-module baptswap_v2::utils {
+module baptswap_v2dot1::utils_v2dot1 {
 
     use std::signer;
     // use aptos_std::debug;
     use aptos_framework::coin::{Self, Coin};
 
-    friend baptswap_v2::stake;
-    friend baptswap_v2::swap_v2;
+    friend baptswap_v2dot1::stake_v2dot1;
+    friend baptswap_v2dot1::swap_v2dot1;
 
     // calculates an amount given a numerator; amount = amount in * numerator / (100*100)
     public(friend) inline fun calculate_amount(numerator: u128, amount_in: u64): u128 {

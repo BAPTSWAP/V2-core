@@ -2,7 +2,7 @@
 
 */
 
-module baptswap_v2::fee_on_transfer {
+module baptswap_v2dot1::fee_on_transfer_v2dot1 {
 
     use aptos_framework::event;
 
@@ -11,15 +11,15 @@ module baptswap_v2::fee_on_transfer {
 
     use bapt_framework::deployer;
 
-    use baptswap_v2::admin;
-    use baptswap_v2::constants;
-    use baptswap_v2::errors;
+    use baptswap_v2dot1::admin_v2dot1;
+    use baptswap_v2dot1::constants_v2dot1;
+    use baptswap_v2dot1::errors_v2dot1;
 
     use std::signer;
     use std::string::{String};
 
-    friend baptswap_v2::router_v2;
-    friend baptswap_v2::swap_v2;
+    friend baptswap_v2dot1::router_v2dot1;
+    friend baptswap_v2dot1::swap_v2dot1;
 
     // -------
     // Structs
@@ -113,13 +113,13 @@ module baptswap_v2::fee_on_transfer {
         team_fee: u128
     ) {
         // assert that the token info is not initialized yet
-        assert!(!exists<FeeOnTransferInfo<CoinType>>(constants::get_resource_account_address()), errors::already_initialized());
-        assert!(deployer::is_coin_owner<CoinType>(sender), errors::not_owner());
+        assert!(!exists<FeeOnTransferInfo<CoinType>>(constants_v2dot1::get_resource_account_address()), errors_v2dot1::already_initialized());
+        assert!(deployer::is_coin_owner<CoinType>(sender), errors_v2dot1::not_owner());
         // assert that the fees do not exceed the threshold
         let fee_on_transfer = liquidity_fee + rewards_fee + team_fee;
-        assert!(does_not_exceed_fee_on_transfer_threshold(fee_on_transfer), errors::excessive_fee());
+        assert!(does_not_exceed_fee_on_transfer_threshold(fee_on_transfer), errors_v2dot1::excessive_fee());
         // move token info under the resource account
-        let resource_signer = &admin::get_resource_signer();
+        let resource_signer = &admin_v2dot1::get_resource_signer();
         move_to(
             resource_signer, 
             FeeOnTransferInfo<CoinType> {
@@ -149,16 +149,16 @@ module baptswap_v2::fee_on_transfer {
 
     // update fee_on_transfer liquidity fee
     public entry fun set_liquidity_fee<CoinType>(sender: &signer, new_fee: u128) acquires FeeOnTransferInfo {
-        let fee_on_transfer = borrow_global_mut<FeeOnTransferInfo<CoinType>>(constants::get_resource_account_address());
+        let fee_on_transfer = borrow_global_mut<FeeOnTransferInfo<CoinType>>(constants_v2dot1::get_resource_account_address());
         let fee_on_transfer_liquidity_fee = fee_on_transfer.liquidity_fee_modifier;
         // assert sender is token owner of CoinType
-        assert!(deployer::is_coin_owner<CoinType>(sender), errors::not_owner());
+        assert!(deployer::is_coin_owner<CoinType>(sender), errors_v2dot1::not_owner());
         // assert new fee is not equal to the existing fee
-        assert!(new_fee != fee_on_transfer_liquidity_fee, errors::already_initialized());
+        assert!(new_fee != fee_on_transfer_liquidity_fee, errors_v2dot1::already_initialized());
         // assert the newer total fee is less than the threshold
         assert!(
             does_not_exceed_fee_on_transfer_threshold(new_fee + fee_on_transfer.rewards_fee_modifier + fee_on_transfer.team_fee_modifier), 
-            errors::excessive_fee()
+            errors_v2dot1::excessive_fee()
         );
         // update the fee
         fee_on_transfer.liquidity_fee_modifier = new_fee;
@@ -168,16 +168,16 @@ module baptswap_v2::fee_on_transfer {
 
     // update fee_on_transfer rewards fee
     public entry fun set_rewards_fee<CoinType>(sender: &signer, new_fee: u128) acquires FeeOnTransferInfo {
-        let fee_on_transfer = borrow_global_mut<FeeOnTransferInfo<CoinType>>(constants::get_resource_account_address());
+        let fee_on_transfer = borrow_global_mut<FeeOnTransferInfo<CoinType>>(constants_v2dot1::get_resource_account_address());
         let fee_on_transfer_rewards_fee = fee_on_transfer.rewards_fee_modifier;
         // assert sender is token owner of CoinType
-        assert!(deployer::is_coin_owner<CoinType>(sender), errors::not_owner());
+        assert!(deployer::is_coin_owner<CoinType>(sender), errors_v2dot1::not_owner());
         // assert new fee is not equal to the existing fee
-        assert!(new_fee != fee_on_transfer_rewards_fee, errors::already_initialized());
+        assert!(new_fee != fee_on_transfer_rewards_fee, errors_v2dot1::already_initialized());
         // assert the newer total fee is less than the threshold
         assert!(
             does_not_exceed_fee_on_transfer_threshold(new_fee + fee_on_transfer.liquidity_fee_modifier + fee_on_transfer.team_fee_modifier), 
-            errors::excessive_fee()
+            errors_v2dot1::excessive_fee()
         );
         // update the fee
         fee_on_transfer.rewards_fee_modifier = new_fee;
@@ -187,16 +187,16 @@ module baptswap_v2::fee_on_transfer {
 
     // update fee_on_transfer team fee
     public entry fun set_team_fee<CoinType>(sender: &signer, new_fee: u128) acquires FeeOnTransferInfo {
-        let fee_on_transfer = borrow_global_mut<FeeOnTransferInfo<CoinType>>(constants::get_resource_account_address());
+        let fee_on_transfer = borrow_global_mut<FeeOnTransferInfo<CoinType>>(constants_v2dot1::get_resource_account_address());
         let fee_on_transfer_team_fee = fee_on_transfer.team_fee_modifier;
         // assert sender is token owner of CoinType
-        assert!(deployer::is_coin_owner<CoinType>(sender), errors::not_owner());
+        assert!(deployer::is_coin_owner<CoinType>(sender), errors_v2dot1::not_owner());
         // assert new fee is not equal to the existing fee
-        assert!(new_fee != fee_on_transfer_team_fee, errors::already_initialized());
+        assert!(new_fee != fee_on_transfer_team_fee, errors_v2dot1::already_initialized());
         // assert the newer total fee is less than the threshold
         assert!(
             does_not_exceed_fee_on_transfer_threshold(new_fee + fee_on_transfer.liquidity_fee_modifier + fee_on_transfer.rewards_fee_modifier), 
-            errors::excessive_fee()
+            errors_v2dot1::excessive_fee()
         );
         // update the fee
         fee_on_transfer.team_fee_modifier = new_fee;
@@ -210,7 +210,7 @@ module baptswap_v2::fee_on_transfer {
 
     // returns true if given rate is less than the individual token threshold
     public(friend) inline fun does_not_exceed_fee_on_transfer_threshold(total_fees_numerator: u128): bool {
-        if (total_fees_numerator <= constants::get_fee_on_transfer_threshold_numerator()) true else false
+        if (total_fees_numerator <= constants_v2dot1::get_fee_on_transfer_threshold_numerator()) true else false
     }
 
     // --------------
@@ -220,7 +220,7 @@ module baptswap_v2::fee_on_transfer {
     #[view]
     // Returns the token fee on transfer info
     public fun get_info<CoinType>(): FeeOnTransferInfo<CoinType> acquires FeeOnTransferInfo {
-        let fee_on_transfer = borrow_global<FeeOnTransferInfo<CoinType>>(constants::get_resource_account_address());
+        let fee_on_transfer = borrow_global<FeeOnTransferInfo<CoinType>>(constants_v2dot1::get_resource_account_address());
         FeeOnTransferInfo<CoinType> {
             owner: fee_on_transfer.owner,
             token_name: fee_on_transfer.token_name,
@@ -232,39 +232,39 @@ module baptswap_v2::fee_on_transfer {
 
     #[view]
     public fun get_owner<CoinType>(): address acquires FeeOnTransferInfo {
-        let fee_on_transfer = borrow_global<FeeOnTransferInfo<CoinType>>(constants::get_resource_account_address());
+        let fee_on_transfer = borrow_global<FeeOnTransferInfo<CoinType>>(constants_v2dot1::get_resource_account_address());
         fee_on_transfer.owner
     }
 
     #[view]
     public fun get_liquidity_fee<CoinType>(): u128  acquires FeeOnTransferInfo {
-        let fee_on_transfer = borrow_global<FeeOnTransferInfo<CoinType>>(constants::get_resource_account_address());
+        let fee_on_transfer = borrow_global<FeeOnTransferInfo<CoinType>>(constants_v2dot1::get_resource_account_address());
         fee_on_transfer.liquidity_fee_modifier
     }
 
     #[view]
     public fun get_team_fee<CoinType>(): u128 acquires FeeOnTransferInfo {
-        let fee_on_transfer = borrow_global<FeeOnTransferInfo<CoinType>>(constants::get_resource_account_address());
+        let fee_on_transfer = borrow_global<FeeOnTransferInfo<CoinType>>(constants_v2dot1::get_resource_account_address());
         fee_on_transfer.team_fee_modifier
     }
 
     #[view]
     public fun get_rewards_fee<CoinType>(): u128 acquires FeeOnTransferInfo {
-        let fee_on_transfer = borrow_global<FeeOnTransferInfo<CoinType>>(constants::get_resource_account_address());
+        let fee_on_transfer = borrow_global<FeeOnTransferInfo<CoinType>>(constants_v2dot1::get_resource_account_address());
         fee_on_transfer.rewards_fee_modifier
     }
 
     #[view]
     // Returns the total fee on transfer fees for a given token
     public fun get_all_fee_on_transfer<CoinType>(): u128 acquires FeeOnTransferInfo {
-        let fee_on_transfer = borrow_global<FeeOnTransferInfo<CoinType>>(constants::get_resource_account_address());
+        let fee_on_transfer = borrow_global<FeeOnTransferInfo<CoinType>>(constants_v2dot1::get_resource_account_address());
         fee_on_transfer.liquidity_fee_modifier + fee_on_transfer.rewards_fee_modifier + fee_on_transfer.team_fee_modifier
     }
     
     #[view]
     // Checks if the fee on transfer is created
     public fun is_created<CoinType>(): bool {
-        exists<FeeOnTransferInfo<CoinType>>(constants::get_resource_account_address())
+        exists<FeeOnTransferInfo<CoinType>>(constants_v2dot1::get_resource_account_address())
     }
 
     // ----
@@ -279,13 +279,13 @@ module baptswap_v2::fee_on_transfer {
         team_fee: u128
     ) {
         // assert that the token info is not initialized yet
-        assert!(!exists<FeeOnTransferInfo<CoinType>>(constants::get_resource_account_address()), errors::already_initialized());
-        assert!(deployer::is_coin_owner<CoinType>(sender), errors::not_owner());
+        assert!(!exists<FeeOnTransferInfo<CoinType>>(constants_v2dot1::get_resource_account_address()), errors_v2dot1::already_initialized());
+        assert!(deployer::is_coin_owner<CoinType>(sender), errors_v2dot1::not_owner());
         // assert that the fees do not exceed the threshold
         let fee_on_transfer = liquidity_fee + rewards_fee + team_fee;
-        assert!(does_not_exceed_fee_on_transfer_threshold(fee_on_transfer), errors::excessive_fee());
+        assert!(does_not_exceed_fee_on_transfer_threshold(fee_on_transfer), errors_v2dot1::excessive_fee());
         // move token info under the resource account
-        let resource_signer = &admin::get_resource_signer();
+        let resource_signer = &admin_v2dot1::get_resource_signer();
         move_to(
             resource_signer, 
             FeeOnTransferInfo<CoinType> {

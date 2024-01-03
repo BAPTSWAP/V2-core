@@ -12,7 +12,7 @@ module alice::alice_coins {
             alice,
             string::utf8(b"Test BAPT Coin"),
             string::utf8(b"TestBAPT"),
-            2,
+            9,
             1000 * pow(10, 8),
             true
         );
@@ -33,7 +33,7 @@ module bob::bob_coins {
             bob,
             string::utf8(b"Test MAU Coin"),
             string::utf8(b"TestMAU"),
-            2,
+            9,
             1000 * pow(10, 8),
             true
         );

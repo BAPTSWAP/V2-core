@@ -1,19 +1,14 @@
 /// Uniswap v2 like token swap program
-module baptswap_v2::swap_utils_v2 {
+module baptswap_v2dot1::swap_utils_v2dot1 {
     use std::string;
     use aptos_std::type_info;
     use aptos_std::comparator;
+    use baptswap_v2dot1::errors_v2dot1;
 
 
     const EQUAL: u8 = 0;
     const SMALLER: u8 = 1;
     const GREATER: u8 = 2;
-
-    const ERROR_INSUFFICIENT_INPUT_AMOUNT: u64 = 0;
-    const ERROR_INSUFFICIENT_LIQUIDITY: u64 = 1;
-    const ERROR_INSUFFICIENT_AMOUNT: u64 = 2;
-    const ERROR_INSUFFICIENT_OUTPOT_AMOUNT: u64 = 3;
-    const ERROR_SAME_COIN: u64 = 4;
 
     public fun get_amount_out(
         amount_in: u64,
@@ -21,8 +16,8 @@ module baptswap_v2::swap_utils_v2 {
         reserve_out: u64,
         liquidity_fee: u128
     ): u64 {
-        assert!(amount_in > 0, ERROR_INSUFFICIENT_INPUT_AMOUNT);
-        assert!(reserve_in > 0 && reserve_out > 0, ERROR_INSUFFICIENT_LIQUIDITY);
+        assert!(amount_in > 0, errors_v2dot1::insufficient_input_amount());
+        assert!(reserve_in > 0 && reserve_out > 0, errors_v2dot1::insufficient_liquidity());
         
         let fee_denominator = 10000u128 - liquidity_fee;
 
@@ -38,8 +33,8 @@ module baptswap_v2::swap_utils_v2 {
         reserve_out: u64,
         liquidity_fee: u128
     ): u64 {
-        assert!(amount_out > 0, ERROR_INSUFFICIENT_OUTPOT_AMOUNT);
-        assert!(reserve_in > 0 && reserve_out > 0, ERROR_INSUFFICIENT_LIQUIDITY);
+        assert!(amount_out > 0, errors_v2dot1::insufficient_output_amount());
+        assert!(reserve_in > 0 && reserve_out > 0, errors_v2dot1::insufficient_liquidity());
 
         let fee_denominator = 10000u128 - liquidity_fee;
 
@@ -49,8 +44,8 @@ module baptswap_v2::swap_utils_v2 {
     }
 
     public fun quote(amount_x: u64, reserve_x: u64, reserve_y: u64): u64 {
-        assert!(amount_x > 0, ERROR_INSUFFICIENT_AMOUNT);
-        assert!(reserve_x > 0 && reserve_y > 0, ERROR_INSUFFICIENT_LIQUIDITY);
+        assert!(amount_x > 0, errors_v2dot1::insufficient_input_amount());
+        assert!(reserve_x > 0 && reserve_y > 0, errors_v2dot1::insufficient_liquidity());
         (((amount_x as u128) * (reserve_y as u128) / (reserve_x as u128)) as u64)
     }
 
@@ -86,7 +81,7 @@ module baptswap_v2::swap_utils_v2 {
 
     public fun sort_token_type<X, Y>(): bool {
         let compare_x_y: u8 = compare_struct<X, Y>();
-        assert!(compare_x_y != get_equal_enum(), ERROR_SAME_COIN);
+        assert!(compare_x_y != get_equal_enum(), errors_v2dot1::same_token());
         (compare_x_y == get_smaller_enum())
     }
 }

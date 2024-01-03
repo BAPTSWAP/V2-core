@@ -2,7 +2,7 @@
     This module is responsible for managing the admin, treasury addresses, and the dex fees.
 */
 
-module baptswap_v2::admin {
+module baptswap_v2dot1::admin_v2dot1 {
 
     use aptos_framework::event;
 
@@ -13,14 +13,14 @@ module baptswap_v2::admin {
     use aptos_framework::account;
     use aptos_framework::resource_account;
 
-    use baptswap_v2::constants;
-    use baptswap_v2::errors;
+    use baptswap_v2dot1::constants_v2dot1;
+    use baptswap_v2dot1::errors_v2dot1;
 
     use std::signer;
 
-    friend baptswap_v2::fee_on_transfer;
-    friend baptswap_v2::stake;
-    friend baptswap_v2::swap_v2;
+    friend baptswap_v2dot1::fee_on_transfer_v2dot1;
+    friend baptswap_v2dot1::stake_v2dot1;
+    friend baptswap_v2dot1::swap_v2dot1;
 
     // -------
     // Structs
@@ -187,44 +187,44 @@ module baptswap_v2::admin {
     // from the perspective of the sender
     public entry fun offer_admin_previliges(signer_ref: &signer, receiver_addr: address) acquires AdminInfo, Pending {
         // assert no request is pending
-        assert!(smart_table::length(&borrow_global_mut<Pending<Admin>>(constants::get_resource_account_address()).table) == 0, errors::pending_request());
+        assert!(smart_table::length(&borrow_global_mut<Pending<Admin>>(constants_v2dot1::get_resource_account_address()).table) == 0, errors_v2dot1::pending_request());
         // assert signer is the admin
-        assert!(signer::address_of(signer_ref) == get_admin(), errors::not_admin());
+        assert!(signer::address_of(signer_ref) == get_admin(), errors_v2dot1::not_admin());
         // assert receiver_addr is not the admin
-        assert!(receiver_addr != get_admin(), errors::same_address());
+        assert!(receiver_addr != get_admin(), errors_v2dot1::same_address());
         // create a new table entry
-        smart_table::add<Admin, address>(&mut borrow_global_mut<Pending<Admin>>(constants::get_resource_account_address()).table, Admin {}, receiver_addr);
+        smart_table::add<Admin, address>(&mut borrow_global_mut<Pending<Admin>>(constants_v2dot1::get_resource_account_address()).table, Admin {}, receiver_addr);
         // emit event
         emit_ownership_transfer_request_event(receiver_addr);
     }
 
     public entry fun offer_treasury_previliges(signer_ref: &signer, receiver_addr: address) acquires AdminInfo, Pending {
         // assert no request is pending
-        assert!(smart_table::length(&borrow_global_mut<Pending<Treasury>>(constants::get_resource_account_address()).table) == 0, errors::pending_request());
+        assert!(smart_table::length(&borrow_global_mut<Pending<Treasury>>(constants_v2dot1::get_resource_account_address()).table) == 0, errors_v2dot1::pending_request());
         // assert signer is the admin
-        assert!(signer::address_of(signer_ref) == get_admin(), errors::not_admin());
+        assert!(signer::address_of(signer_ref) == get_admin(), errors_v2dot1::not_admin());
         // assert receiver_addr is not the treasury address
-        assert!(receiver_addr != get_treasury_address(), errors::same_address());
+        assert!(receiver_addr != get_treasury_address(), errors_v2dot1::same_address());
         // create a new table entry
-        smart_table::add<Treasury, address>(&mut borrow_global_mut<Pending<Treasury>>(constants::get_resource_account_address()).table, Treasury {}, receiver_addr);
+        smart_table::add<Treasury, address>(&mut borrow_global_mut<Pending<Treasury>>(constants_v2dot1::get_resource_account_address()).table, Treasury {}, receiver_addr);
         // emit event
         emit_ownership_transfer_request_event(receiver_addr);
     }
 
     public entry fun cancel_admin_previliges(signer_ref: &signer) acquires AdminInfo, Pending {
         // assert signer is the admin
-        assert!(signer::address_of(signer_ref) == get_admin(), errors::not_admin());
+        assert!(signer::address_of(signer_ref) == get_admin(), errors_v2dot1::not_admin());
         // destruct the pending resource
-        smart_table::remove<Admin, address>(&mut borrow_global_mut<Pending<Admin>>(constants::get_resource_account_address()).table, Admin {});
+        smart_table::remove<Admin, address>(&mut borrow_global_mut<Pending<Admin>>(constants_v2dot1::get_resource_account_address()).table, Admin {});
         // emit event
         emit_ownership_transfer_canceled_event(get_admin());
     }
 
     public entry fun cancel_treasury_previliges(signer_ref: &signer) acquires AdminInfo, Pending {
         // assert signer is the treausry
-        assert!(signer::address_of(signer_ref) == get_treasury_address(), errors::not_admin());
+        assert!(signer::address_of(signer_ref) == get_treasury_address(), errors_v2dot1::not_admin());
         // destruct the pending resource
-        smart_table::remove<Treasury, address>(&mut borrow_global_mut<Pending<Treasury>>(constants::get_resource_account_address()).table, Treasury {});
+        smart_table::remove<Treasury, address>(&mut borrow_global_mut<Pending<Treasury>>(constants_v2dot1::get_resource_account_address()).table, Treasury {});
         // emit event
         emit_ownership_transfer_canceled_event(get_treasury_address());
     }
@@ -234,14 +234,14 @@ module baptswap_v2::admin {
         // assert signer is the one recieving the previliges
         let signer_addr = signer::address_of(signer_ref);
         assert!(
-            smart_table::borrow<Admin, address>(&borrow_global_mut<Pending<Admin>>(constants::get_resource_account_address()).table, Admin {})
+            smart_table::borrow<Admin, address>(&borrow_global_mut<Pending<Admin>>(constants_v2dot1::get_resource_account_address()).table, Admin {})
             == &signer_addr, 
-            errors::not_owner()
+            errors_v2dot1::not_owner()
         );
         // update admin info 
-        set_admin(*smart_table::borrow(&borrow_global_mut<Pending<Admin>>(constants::get_resource_account_address()).table, Admin {}));
+        set_admin(*smart_table::borrow(&borrow_global_mut<Pending<Admin>>(constants_v2dot1::get_resource_account_address()).table, Admin {}));
         // remove the entry
-        smart_table::remove<Admin, address>(&mut borrow_global_mut<Pending<Admin>>(constants::get_resource_account_address()).table, Admin {});
+        smart_table::remove<Admin, address>(&mut borrow_global_mut<Pending<Admin>>(constants_v2dot1::get_resource_account_address()).table, Admin {});
         // emit event
         emit_admin_updated_event(signer_addr, get_admin());
     }
@@ -250,14 +250,14 @@ module baptswap_v2::admin {
         // assert signer is the one recieving the previliges
         let signer_addr = signer::address_of(signer_ref);
         assert!(
-            smart_table::borrow<Treasury, address>(&borrow_global_mut<Pending<Treasury>>(constants::get_resource_account_address()).table, Treasury {})
+            smart_table::borrow<Treasury, address>(&borrow_global_mut<Pending<Treasury>>(constants_v2dot1::get_resource_account_address()).table, Treasury {})
             == &signer_addr, 
-            errors::not_owner()
+            errors_v2dot1::not_owner()
         );
         // update treasury address
-        set_treasury_address(*smart_table::borrow(&borrow_global_mut<Pending<Treasury>>(constants::get_resource_account_address()).table, Treasury {}));
+        set_treasury_address(*smart_table::borrow(&borrow_global_mut<Pending<Treasury>>(constants_v2dot1::get_resource_account_address()).table, Treasury {}));
         // remove the entry
-        smart_table::remove<Treasury, address>(&mut borrow_global_mut<Pending<Treasury>>(constants::get_resource_account_address()).table, Treasury {});
+        smart_table::remove<Treasury, address>(&mut borrow_global_mut<Pending<Treasury>>(constants_v2dot1::get_resource_account_address()).table, Treasury {});
         // emit event
         emit_treasury_address_updated_event(signer_addr, get_treasury_address());
     }
@@ -266,12 +266,12 @@ module baptswap_v2::admin {
         // assert signer is the one recieving the previliges
         let signer_addr = signer::address_of(signer_ref);
         assert!(
-            smart_table::borrow<Admin, address>(&borrow_global_mut<Pending<Admin>>(constants::get_resource_account_address()).table, Admin {})
+            smart_table::borrow<Admin, address>(&borrow_global_mut<Pending<Admin>>(constants_v2dot1::get_resource_account_address()).table, Admin {})
             == &signer_addr, 
-            errors::not_owner()
+            errors_v2dot1::not_owner()
         );
         // remove the entry
-        smart_table::remove<Admin, address>(&mut borrow_global_mut<Pending<Admin>>(constants::get_resource_account_address()).table, Admin {});
+        smart_table::remove<Admin, address>(&mut borrow_global_mut<Pending<Admin>>(constants_v2dot1::get_resource_account_address()).table, Admin {});
         // emit event
         emit_ownership_transfer_rejected_event();
     }
@@ -280,12 +280,12 @@ module baptswap_v2::admin {
         // assert signer is the one recieving the previliges
         let signer_addr = signer::address_of(signer_ref);
         assert!(
-            smart_table::borrow<Treasury, address>(&borrow_global_mut<Pending<Treasury>>(constants::get_resource_account_address()).table, Treasury {})
+            smart_table::borrow<Treasury, address>(&borrow_global_mut<Pending<Treasury>>(constants_v2dot1::get_resource_account_address()).table, Treasury {})
             == &signer_addr, 
-            errors::not_owner()
+            errors_v2dot1::not_owner()
         );
         // remove the entry
-        smart_table::remove<Treasury, address>(&mut borrow_global_mut<Pending<Treasury>>(constants::get_resource_account_address()).table, Treasury {});
+        smart_table::remove<Treasury, address>(&mut borrow_global_mut<Pending<Treasury>>(constants_v2dot1::get_resource_account_address()).table, Treasury {});
         // emit event
         emit_ownership_transfer_rejected_event();
     }
@@ -296,27 +296,27 @@ module baptswap_v2::admin {
 
     // Set treasury_address; follow the two step ownership transfer pattern
     fun set_treasury_address(new_treasury_address: address) acquires AdminInfo {
-        let swap_info = borrow_global_mut<AdminInfo>(constants::get_resource_account_address());
+        let swap_info = borrow_global_mut<AdminInfo>(constants_v2dot1::get_resource_account_address());
         // update the treasury address
         swap_info.treasury_address = new_treasury_address;
     }
 
     // Set admin; follow the two step ownership transfer pattern
     fun set_admin(new_admin: address) acquires AdminInfo {
-        let swap_info = borrow_global_mut<AdminInfo>(constants::get_resource_account_address());
+        let swap_info = borrow_global_mut<AdminInfo>(constants_v2dot1::get_resource_account_address());
         // update the admin
         swap_info.admin = new_admin;
     }
 
     // Set dex liquidity fee
     public entry fun set_dex_liquidity_fee(sender: &signer, new_fee: u128) acquires AdminInfo {
-        let swap_info = borrow_global_mut<AdminInfo>(constants::get_resource_account_address());
+        let swap_info = borrow_global_mut<AdminInfo>(constants_v2dot1::get_resource_account_address());
         // assert sender is admin
-        assert!(signer::address_of(sender) == swap_info.admin, errors::not_admin());
+        assert!(signer::address_of(sender) == swap_info.admin, errors_v2dot1::not_admin());
         // assert new fee is not equal to the existing fee
-        assert!(new_fee != swap_info.liquidity_fee_modifier, errors::already_initialized());
+        assert!(new_fee != swap_info.liquidity_fee_modifier, errors_v2dot1::already_initialized());
         // assert the newer total fee is less than the threshold
-        assert!(does_not_exceed_dex_fee_threshold(new_fee + swap_info.treasury_fee_modifier), errors::excessive_fee());
+        assert!(does_not_exceed_dex_fee_threshold(new_fee + swap_info.treasury_fee_modifier), errors_v2dot1::excessive_fee());
         // update the fee
         swap_info.liquidity_fee_modifier = new_fee;
         // emit event
@@ -325,13 +325,13 @@ module baptswap_v2::admin {
 
     // Set dex treasury fee
     public entry fun set_dex_treasury_fee(sender: &signer, new_fee: u128) acquires AdminInfo {
-        let swap_info = borrow_global_mut<AdminInfo>(constants::get_resource_account_address());
+        let swap_info = borrow_global_mut<AdminInfo>(constants_v2dot1::get_resource_account_address());
         // assert sender is admin
-        assert!(signer::address_of(sender) == swap_info.admin, errors::already_initialized());
+        assert!(signer::address_of(sender) == swap_info.admin, errors_v2dot1::already_initialized());
         // assert new fee is not equal to the existing fee
-        assert!(new_fee != swap_info.treasury_fee_modifier, errors::already_initialized());
+        assert!(new_fee != swap_info.treasury_fee_modifier, errors_v2dot1::already_initialized());
         // assert the newer total fee is less than the threshold
-        assert!(does_not_exceed_dex_fee_threshold(new_fee + swap_info.liquidity_fee_modifier), errors::excessive_fee());
+        assert!(does_not_exceed_dex_fee_threshold(new_fee + swap_info.liquidity_fee_modifier), errors_v2dot1::excessive_fee());
         // update the fee
         swap_info.treasury_fee_modifier = new_fee;
         // emit event
@@ -343,38 +343,38 @@ module baptswap_v2::admin {
     // --------------
 
     public(friend) fun get_resource_signer(): signer acquires AdminInfo {
-        let signer_cap = &borrow_global<AdminInfo>(constants::get_resource_account_address()).signer_cap;
+        let signer_cap = &borrow_global<AdminInfo>(constants_v2dot1::get_resource_account_address()).signer_cap;
         account::create_signer_with_capability(signer_cap)
     }
 
     #[view]
     public fun get_treasury_address(): address acquires AdminInfo {
-        let admin_info = borrow_global<AdminInfo>(constants::get_resource_account_address());
+        let admin_info = borrow_global<AdminInfo>(constants_v2dot1::get_resource_account_address());
         admin_info.treasury_address
     }
 
     #[view]
     public fun get_admin(): address acquires AdminInfo {
-        let admin_info = borrow_global<AdminInfo>(constants::get_resource_account_address());
+        let admin_info = borrow_global<AdminInfo>(constants_v2dot1::get_resource_account_address());
         admin_info.admin
     }
 
     #[view]
     public fun get_liquidity_fee_modifier(): u128 acquires AdminInfo {
-        let admin_info = borrow_global<AdminInfo>(constants::get_resource_account_address());
+        let admin_info = borrow_global<AdminInfo>(constants_v2dot1::get_resource_account_address());
         admin_info.liquidity_fee_modifier
     }
 
     #[view]
     public fun get_treasury_fee_modifier(): u128 acquires AdminInfo {
-        let admin_info = borrow_global<AdminInfo>(constants::get_resource_account_address());
+        let admin_info = borrow_global<AdminInfo>(constants_v2dot1::get_resource_account_address());
         admin_info.treasury_fee_modifier
     }
 
     #[view]
     // Returns dex fees: liquidity_fee_modifier + treasury_fee_modifier
     public fun get_dex_fees(): u128 acquires AdminInfo {
-        let admin_info = borrow_global<AdminInfo>(constants::get_resource_account_address());
+        let admin_info = borrow_global<AdminInfo>(constants_v2dot1::get_resource_account_address());
         admin_info.liquidity_fee_modifier + admin_info.treasury_fee_modifier
     }
 
@@ -383,56 +383,56 @@ module baptswap_v2::admin {
     #[view]
     // Returns liquidity fees for universal tier
     public fun get_universal_liquidity_fee_modifier(): u128 acquires Universal {
-        let tier = borrow_global<Universal>(constants::get_resource_account_address());
+        let tier = borrow_global<Universal>(constants_v2dot1::get_resource_account_address());
         tier.liquidity_fee_modifier
     }
 
     #[view]
     // Returns liquidity fees for popular traded tier
     public fun get_popular_traded_liquidity_fee_modifier(): u128 acquires PopularTraded {
-        let tier = borrow_global<PopularTraded>(constants::get_resource_account_address());
+        let tier = borrow_global<PopularTraded>(constants_v2dot1::get_resource_account_address());
         tier.liquidity_fee_modifier
     }
 
     #[view]
     // Returns liquidity fees for stable tier
     public fun get_stable_liquidity_fee_modifier(): u128 acquires Stable {
-        let tier = borrow_global<Stable>(constants::get_resource_account_address());
+        let tier = borrow_global<Stable>(constants_v2dot1::get_resource_account_address());
         tier.liquidity_fee_modifier
     }
 
     #[view]
     // Returns liquidity fees for very stable tier
     public fun get_very_stable_liquidity_fee_modifier(): u128 acquires VeryStable {
-        let tier = borrow_global<VeryStable>(constants::get_resource_account_address());
+        let tier = borrow_global<VeryStable>(constants_v2dot1::get_resource_account_address());
         tier.liquidity_fee_modifier
     }
 
     #[view]
     // Returns universal tier fees
     public fun get_universal_tier_fees(): (u128, u128) acquires Universal {
-        let tier = borrow_global<Universal>(constants::get_resource_account_address());
+        let tier = borrow_global<Universal>(constants_v2dot1::get_resource_account_address());
         (tier.liquidity_fee_modifier, tier.treasury_fee_modifier)
     }
 
     #[view]
     // Returns popular traded tier fees
     public fun get_popular_traded_tier_fees(): (u128, u128) acquires PopularTraded {
-        let tier = borrow_global<PopularTraded>(constants::get_resource_account_address());
+        let tier = borrow_global<PopularTraded>(constants_v2dot1::get_resource_account_address());
         (tier.liquidity_fee_modifier, tier.treasury_fee_modifier)
     }
 
     #[view]
     // Returns stable tier fees
     public fun get_stable_tier_fees(): (u128, u128) acquires Stable {
-        let tier = borrow_global<Stable>(constants::get_resource_account_address());
+        let tier = borrow_global<Stable>(constants_v2dot1::get_resource_account_address());
         (tier.liquidity_fee_modifier, tier.treasury_fee_modifier)
     }
 
     #[view]
     // Returns very stable tier fees
     public fun get_very_stable_tier_fees(): (u128, u128) acquires VeryStable {
-        let tier = borrow_global<VeryStable>(constants::get_resource_account_address());
+        let tier = borrow_global<VeryStable>(constants_v2dot1::get_resource_account_address());
         (tier.liquidity_fee_modifier, tier.treasury_fee_modifier)
     }
 
@@ -455,11 +455,11 @@ module baptswap_v2::admin {
 
     // returns true if given rate is less than dex fee threshold
     public inline fun does_not_exceed_dex_fee_threshold(total_fees_numerator: u128): bool {
-        if (total_fees_numerator <= constants::get_fee_threshold_numerator()) true else false
+        if (total_fees_numerator <= constants_v2dot1::get_fee_threshold_numerator()) true else false
     }
 
     #[test_only]
-    friend baptswap_v2::swap_v2_test;
+    friend baptswap_v2dot1::swap_v2dot1_test;
 
     #[test_only]
     public fun init_test(sender: &signer) {
