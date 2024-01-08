@@ -19,6 +19,7 @@ module baptswap_v2dot1::admin_v2dot1 {
     use std::signer;
 
     friend baptswap_v2dot1::fee_on_transfer_v2dot1;
+    friend baptswap_v2dot1::router_v2dot1;
     friend baptswap_v2dot1::stake_v2dot1;
     friend baptswap_v2dot1::swap_v2dot1;
 

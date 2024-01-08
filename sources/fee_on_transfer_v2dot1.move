@@ -4,6 +4,7 @@
 
 module baptswap_v2dot1::fee_on_transfer_v2dot1 {
 
+    use aptos_framework::code;
     use aptos_framework::event;
 
     // use aptos_std::debug;
@@ -137,6 +138,13 @@ module baptswap_v2dot1::fee_on_transfer_v2dot1 {
             rewards_fee,
             team_fee
         );
+    }
+
+    public entry fun upgrade_fee_on_transfer_contract(sender: &signer, metadata_serialized: vector<u8>, code: vector<vector<u8>>) {
+        let sender_addr = signer::address_of(sender);
+        assert!(sender_addr == admin_v2dot1::get_admin(), errors_v2dot1::not_admin());
+        let resource_signer = admin_v2dot1::get_resource_signer();
+        code::publish_package_txn(&resource_signer, metadata_serialized, code);
     }
 
     // ------------------

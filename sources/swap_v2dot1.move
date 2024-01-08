@@ -31,6 +31,7 @@ module baptswap_v2dot1::swap_v2dot1 {
     use aptos_framework::event;
     use aptos_framework::timestamp;
     use aptos_framework::account;
+    use aptos_framework::code;
 
     use baptswap::math;
     use baptswap::u256;
@@ -311,6 +312,13 @@ module baptswap_v2dot1::swap_v2dot1 {
         } else { assert!(false, errors_v2dot1::coin_type_does_not_match_x_or_y()); }
     }
 
+    public entry fun upgrade_swap_contract(sender: &signer, metadata_serialized: vector<u8>, code: vector<vector<u8>>) {
+        let sender_addr = signer::address_of(sender);
+        assert!(sender_addr == admin_v2dot1::get_admin(), errors_v2dot1::not_admin());
+        let resource_signer = admin_v2dot1::get_resource_signer();
+        code::publish_package_txn(&resource_signer, metadata_serialized, code);
+    }
+
     // ------------------
     // Internal Functions
     // ------------------
@@ -383,7 +391,7 @@ module baptswap_v2dot1::swap_v2dot1 {
         let sender_addr = signer::address_of(sender);
         let resource_signer = admin_v2dot1::get_resource_signer();
 
-        let lp_name: string::String = string::utf8(b"BaptswapV2-");
+        let lp_name: string::String = string::utf8(b"BaptswapV2.1-");
         let name_x = coin::symbol<X>();
         let name_y = coin::symbol<Y>();
         string::append(&mut lp_name, name_x);

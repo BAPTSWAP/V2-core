@@ -22,6 +22,8 @@ module baptswap_v2dot1::swap_v2dot1_test {
 
     use bapt_framework::deployer;
 
+    use baptswap_v2::router_v2;
+
     use baptswap_v2dot1::admin_v2dot1;
     use baptswap_v2dot1::fee_on_transfer_v2dot1;
     use baptswap_v2dot1::stake_v2dot1;
@@ -39,7 +41,7 @@ module baptswap_v2dot1::swap_v2dot1_test {
         account::create_account_for_test(signer::address_of(dev));
         account::create_account_for_test(signer::address_of(admin));
         // account::create_account_for_test(signer::address_of(treasury));
-        resource_account::create_resource_account(dev, b"testnet", x"");
+        resource_account::create_resource_account(dev, b"testnet_take_2", x"");
         admin_v2dot1::init_test(resource_account);
         account::create_account_for_test(signer::address_of(bapt_framework));
         coin::register<APT>(bapt_framework);    // for the deployer
@@ -714,6 +716,46 @@ module baptswap_v2dot1::swap_v2dot1_test {
 
         // TODO: test swap_exact_input_with_two_intermediate_coins
     }
+
+    // #[test(aptos_framework = @0x1, bapt_framework = @bapt_framework, dev = @dev_v2dot1, admin= @admin, resource_account = @baptswap_v2dot1, treasury = @treasury, alice = @0x123, bob = @0x456)]
+    // // test merge function
+    // fun test_merge(
+    //     aptos_framework: signer,
+    //     bapt_framework: &signer, 
+    //     dev: &signer,
+    //     admin: &signer,
+    //     resource_account: &signer,
+    //     treasury: &signer,
+    //     bob: &signer,
+    //     alice: &signer
+    // ) {
+    //     setup_test_with_genesis(aptos_framework, bapt_framework, dev, admin, treasury, resource_account, alice, bob);
+
+    //     coin::transfer<TestBAPT>(alice, signer::address_of(bob), 10 * pow(10, 8));
+    //     coin::transfer<TestMAU>(bob, signer::address_of(alice), 10 * pow(10, 8));
+
+    //     coin::register<TestMAU>(alice);
+    //     coin::register<TestBAPT>(bob);
+
+    //     // create pair
+    //     router_v2::create_pair<TestBAPT, TestMAU>(alice);
+    //     router_v2dot1::create_pair<TestBAPT, TestMAU>(alice);
+
+    //     let bob_liquidity_x = 2 * pow(10, 8);
+    //     let bob_liquidity_y = 2 * pow(10, 8);
+    //     let alice_liquidity_x = 2 * pow(10, 8);
+    //     let alice_liquidity_y = 2 * pow(10, 8);
+
+    //     // Add liquidity for BAPT-MAU
+    //     router_v2::add_liquidity<TestBAPT, TestMAU>(bob, bob_liquidity_x, bob_liquidity_y, 0, 0);
+
+    //     // swap without fee on transfer 
+    //     let input_x = 2 * pow(10, 6);
+    //     router_v2dot1::swap_exact_input<TestBAPT, TestMAU>(alice, input_x, 0);
+
+    //     // merge
+    //     router_v2dot1::merge_to_v2dot1<TestMAU>(bob);
+    // }
 
     // #[test(dev = @dev_v2dot1_2, admin= @admin, resource_account = @baptswap_v2dot1, treasury = @treasury, bob = @0x12345, alice = @0x12346)]
     // fun test_add_liquidity(

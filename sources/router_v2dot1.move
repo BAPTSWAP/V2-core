@@ -1,11 +1,13 @@
 module baptswap_v2dot1::router_v2dot1 {
 
     use aptos_framework::aptos_coin::{AptosCoin as APT};
+    use aptos_framework::code;
     use aptos_framework::coin;
 
     use baptswap_v2::swap_v2;
     use baptswap_v2::router_v2;
 
+    use baptswap_v2dot1::admin_v2dot1;
     use baptswap_v2dot1::errors_v2dot1;
     use baptswap_v2dot1::stake_v2dot1;
     use baptswap_v2dot1::swap_utils_v2dot1;
@@ -13,10 +15,15 @@ module baptswap_v2dot1::router_v2dot1 {
 
     use std::signer;
 
-    use mau::MAU::MAU;
-    use other_coins::asset::{USDC, USDT, WETH};
+    use other_coins_testnet::asset::{USDC, USDT, WETH};
 
-    // Create a Pair from 2 coins
+    public entry fun upgrade_router_contract(sender: &signer, metadata_serialized: vector<u8>, code: vector<vector<u8>>) {
+        let sender_addr = signer::address_of(sender);
+        assert!(sender_addr == admin_v2dot1::get_admin(), errors_v2dot1::not_admin());
+        let resource_signer = admin_v2dot1::get_resource_signer();
+        code::publish_package_txn(&resource_signer, metadata_serialized, code);
+    }
+    
     // Should revert if the pair is already created
     public entry fun create_pair<X, Y>(
         sender: &signer,
@@ -256,59 +263,78 @@ module baptswap_v2dot1::router_v2dot1 {
         }
     }
 
-    // merge to v2.1 
-    public entry fun merge_to_v2dot1(signer_ref: &signer) {
+    // merge to v2.1
+    // for package addresses conflict reason, MAU address has to be passed in as a parameter (should be hardcoded from the frontend)
+    // the function is convienient as it merges all pairs in one call, but assumes amounts min are 0. Use it in your own risk
+    public entry fun merge_all_to_v2dot1<MAU>(signer_ref: &signer) {
         if (swap_utils_v2dot1::sort_token_type<APT, MAU>()) {
-            merge<APT, MAU>(signer_ref);
+            merge_pair_to_v2dot1<APT, MAU>(signer_ref, 0, 0);
         } else {
-            merge<MAU, APT>(signer_ref);
+            merge_pair_to_v2dot1<MAU, APT>(signer_ref, 0, 0);
         };
         if (swap_utils_v2dot1::sort_token_type<APT, USDC>()) {
-            merge<APT, USDC>(signer_ref);
+            merge_pair_to_v2dot1<APT, USDC>(signer_ref, 0, 0);
         } else {
-            merge<USDC, APT>(signer_ref);
+            merge_pair_to_v2dot1<USDC, APT>(signer_ref, 0, 0);
         };
         if (swap_utils_v2dot1::sort_token_type<APT, USDT>()) {
-            merge<APT, USDT>(signer_ref);
+            merge_pair_to_v2dot1<APT, USDT>(signer_ref, 0, 0);
         } else {
-            merge<USDT, APT>(signer_ref);
+            merge_pair_to_v2dot1<USDT, APT>(signer_ref, 0, 0);
         };
         if (swap_utils_v2dot1::sort_token_type<APT, WETH>()) {
-            merge<APT, WETH>(signer_ref);
+            merge_pair_to_v2dot1<APT, WETH>(signer_ref, 0, 0);
         } else {
-            merge<WETH, APT>(signer_ref);
+            merge_pair_to_v2dot1<WETH, APT>(signer_ref, 0, 0);
         };
         if (swap_utils_v2dot1::sort_token_type<MAU, USDC>()) {
-            merge<MAU, USDC>(signer_ref);
+            merge_pair_to_v2dot1<MAU, USDC>(signer_ref, 0, 0);
         } else {
-            merge<USDC, MAU>(signer_ref);
+            merge_pair_to_v2dot1<USDC, MAU>(signer_ref, 0, 0);
         };
         if (swap_utils_v2dot1::sort_token_type<MAU, USDT>()) {
-            merge<MAU, USDT>(signer_ref);
+            merge_pair_to_v2dot1<MAU, USDT>(signer_ref, 0, 0);
         } else {
-            merge<USDT, MAU>(signer_ref);
+            merge_pair_to_v2dot1<USDT, MAU>(signer_ref, 0, 0);
         };
         if (swap_utils_v2dot1::sort_token_type<MAU, WETH>()) {
-            merge<MAU, WETH>(signer_ref);
+            merge_pair_to_v2dot1<MAU, WETH>(signer_ref, 0, 0);
         } else {
-            merge<WETH, MAU>(signer_ref);
+            merge_pair_to_v2dot1<WETH, MAU>(signer_ref, 0, 0);
         };
         if (swap_utils_v2dot1::sort_token_type<USDC, USDT>()) {
-            merge<USDC, USDT>(signer_ref);
+            merge_pair_to_v2dot1<USDC, USDT>(signer_ref, 0, 0);
         } else {
-            merge<USDT, USDC>(signer_ref);
+            merge_pair_to_v2dot1<USDT, USDC>(signer_ref, 0, 0);
         };
     }
 
-    fun merge<X, Y>(signer_ref: &signer) {
+    // merge to v2.1
+    // inputs the addresses of the two coins of the pair the signer wants to merge.
+    public entry fun merge_pair_to_v2dot1<X, Y>(signer_ref: &signer, amount_x_min: u64, amount_y_min: u64) {
+        let signer_addr = signer::address_of(signer_ref);
+        if (swap_utils_v2dot1::sort_token_type<X, Y>()) {
+            // check if the LPToken is registered under the signer's wallet
+            if (coin::is_account_registered<swap_v2::LPToken<X, Y>>(signer_addr)) {
+                merge_internal<X, Y>(signer_ref, amount_x_min, amount_y_min);
+            } else { /* if not, do nothing */ }
+        } else {
+            // check if the LPToken is registered under the signer's wallet
+            if (coin::is_account_registered<swap_v2::LPToken<Y, X>>(signer_addr)) {
+                merge_internal<Y, X>(signer_ref, amount_x_min, amount_y_min);
+            } else { /* if not, do nothing */ }
+        }
+    }
+
+    fun merge_internal<X, Y>(signer_ref: &signer, amount_x_min: u64, amount_y_min: u64) {
         let signer_addr = signer::address_of(signer_ref);
         let x_balance_before_removing_liquidity = coin::balance<X>(signer_addr);
         let y_balance_before_removing_liquidity = coin::balance<Y>(signer_addr);
         let lp_balance = swap_v2::lp_balance<X, Y>(signer_addr);
         // do nothing if signer has no liquidity in the given pair
-        if (lp_balance == 0) { return; };
+        if (lp_balance == 0) { };
         // remove liquidity from v2 pair
-        router_v2::remove_liquidity<X, Y>(signer_ref, lp_balance, 0, 0);
+        router_v2::remove_liquidity<X, Y>(signer_ref, lp_balance, amount_x_min, amount_y_min);
         // calculate amounts to add liquidity
         let x_balance_after_removing_liquidity = coin::balance<X>(signer_addr);
         let y_balance_after_removing_liquidity = coin::balance<Y>(signer_addr);
@@ -317,8 +343,8 @@ module baptswap_v2dot1::router_v2dot1 {
             signer_ref,
             x_balance_after_removing_liquidity - x_balance_before_removing_liquidity,
             y_balance_after_removing_liquidity - y_balance_before_removing_liquidity,
-            0,
-            0
+            amount_x_min,
+            amount_y_min
         );
     }
 }
