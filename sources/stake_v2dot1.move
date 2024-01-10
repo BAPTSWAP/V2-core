@@ -63,8 +63,6 @@ module baptswap_v2dot1::stake_v2dot1 {
         // based on CoinType
         if (type_info::type_of<CoinType>() == type_info::type_of<X>()) {
             assert!(!exists<TokenPairRewardsPool<X, Y>>(constants_v2dot1::get_resource_account_address()), errors_v2dot1::already_initialized());
-            // Assert initializer is the owner of either X or Y
-            assert!(deployer::is_coin_owner<X>(sender), errors_v2dot1::not_owner());
             // Assert either of the fee_on_transfer is intialized 
             assert!(fee_on_transfer_v2dot1::is_created<X>(), errors_v2dot1::fee_on_transfer_not_initialized());
             // Create the pool resource
@@ -84,8 +82,6 @@ module baptswap_v2dot1::stake_v2dot1 {
             );
         } else {
             assert!(!exists<TokenPairRewardsPool<Y, X>>(constants_v2dot1::get_resource_account_address()), errors_v2dot1::already_initialized());
-            // Assert initializer is the owner of either X or Y
-            assert!(deployer::is_coin_owner<Y>(sender), errors_v2dot1::not_owner());
             // Assert either of the fee_on_transfer is intialized
             assert!(fee_on_transfer_v2dot1::is_created<Y>(), errors_v2dot1::fee_on_transfer_not_initialized());
             // Create the pool resource
@@ -269,20 +265,27 @@ module baptswap_v2dot1::stake_v2dot1 {
         }
     }  
 
-    // // TODO: add rewards
-    // public(friend) fun add_rewards<X, Y>(
-    //     sender: &signer,
-    //     amount_x: u64
-    // ) acquires TokenPairRewardsPool { 
-    //     assert!(exists<TokenPairRewardsPool<X, Y>>(constants_v2dot1::get_resource_account_address()), errors_v2dot1::pool_not_created());
-    //     let pool_info = borrow_global_mut<TokenPairRewardsPool<X, Y>>(constants_v2dot1::get_resource_account_address());
-
-    //     // Update pool
-    //     update_pool<X, Y>(amount_x, 0);
-
-    //     // Transfer in rewards
-    //     utils_v2dot1::transfer_in<X>(&mut pool_info.balance_x, sender, amount_x);
-    // }
+    public(friend) fun add_rewards<X, Y, CoinType>(
+        sender: &signer,
+        amount: u64
+    ) acquires TokenPairRewardsPool { 
+        assert!(exists<TokenPairRewardsPool<X, Y>>(constants_v2dot1::get_resource_account_address()), errors_v2dot1::pool_not_created());
+        assert!(type_info::type_of<CoinType>() == type_info::type_of<X>() || type_info::type_of<CoinType>() == type_info::type_of<Y>(), errors_v2dot1::coin_type_does_not_match_x_or_y());
+        if (type_info::type_of<CoinType>() == type_info::type_of<X>()) {
+            // Update pool
+            update_pool<X, Y>(amount, 0);
+            let pool_info = borrow_global_mut<TokenPairRewardsPool<X, Y>>(constants_v2dot1::get_resource_account_address());
+            // Transfer in rewards
+            utils_v2dot1::transfer_in<X>(&mut pool_info.balance_x, sender, amount);
+        } else {
+            // Update pool
+            update_pool<X, Y>(0, amount);
+            let pool_info = borrow_global_mut<TokenPairRewardsPool<X, Y>>(constants_v2dot1::get_resource_account_address());
+            // Transfer in rewards
+            utils_v2dot1::transfer_in<Y>(&mut pool_info.balance_y, sender, amount);
+        };
+        
+    }
 
     // claim rewards
     public(friend) fun claim_rewards<X, Y>(sender: &signer) acquires TokenPairRewardsPool, RewardsPoolUserInfo {

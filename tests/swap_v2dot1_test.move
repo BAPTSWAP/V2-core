@@ -41,7 +41,7 @@ module baptswap_v2dot1::swap_v2dot1_test {
         account::create_account_for_test(signer::address_of(dev));
         account::create_account_for_test(signer::address_of(admin));
         // account::create_account_for_test(signer::address_of(treasury));
-        resource_account::create_resource_account(dev, b"testnet_take_2", x"");
+        resource_account::create_resource_account(dev, b"testnet_take_3", x"");
         admin_v2dot1::init_test(resource_account);
         account::create_account_for_test(signer::address_of(bapt_framework));
         coin::register<APT>(bapt_framework);    // for the deployer
@@ -88,23 +88,22 @@ module baptswap_v2dot1::swap_v2dot1_test {
         bob: &signer,
     ) {
         setup_test_with_genesis(aptos_framework, bapt_framework, dev, admin, treasury, resource_account, alice, bob);
-
+        fee_on_transfer_v2dot1::initialize_fee_on_transfer_for_test<TestBAPT>(alice, 100, 100, 100);
         // create pair
-        router_v2dot1::create_pair<TestBAPT, APT>(alice);
+        router_v2dot1::create_pair<TestBAPT, APT>(bob);
         let alice_liquidity_x = 10 * pow(10, 8);
         let alice_liquidity_y = 10 * pow(10, 8);
         // alice provider liquidity for BAPT-APT
         router_v2dot1::add_liquidity<APT, TestBAPT>(alice, 100000000, 100000000, 0, 0);
 
         // initialize fee on transfer of both tokens
-        fee_on_transfer_v2dot1::initialize_fee_on_transfer_for_test<TestBAPT>(alice, 100, 100, 100);
         let fee_on_transfer = fee_on_transfer_v2dot1::get_all_fee_on_transfer<TestBAPT>();
         debug::print<u128>(&fee_on_transfer);
         coin::register<TestBAPT>(treasury);
         router_v2dot1::swap_exact_input<APT, TestBAPT>(alice, 2 * pow(10, 6), 0);
 
         // register fee on transfer in the pairs
-        router_v2dot1::register_fee_on_transfer_in_a_pair<TestBAPT, TestBAPT, APT>(alice);
+        // router_v2dot1::register_fee_on_transfer_in_a_pair<TestBAPT, TestBAPT, APT>(alice);
         // assert!(swap_v2dot1::is_fee_on_transfer_registered<TestBAPT, TestBAPT, APT>(), 1);
         assert!(swap_v2dot1::is_fee_on_transfer_registered<TestBAPT, APT, TestBAPT>(), 0);
         assert!(!swap_v2dot1::is_fee_on_transfer_registered<APT, APT, TestBAPT>(), 0);
@@ -301,14 +300,25 @@ module baptswap_v2dot1::swap_v2dot1_test {
         debug::print<u64>(&coin::balance<APT>(signer::address_of(alice)));
         debug::print<u64>(&coin::balance<TestBAPT>(signer::address_of(alice)));
 
-        // // Based on sorting of the pairs, the pair is TestBAPT-APT
-        // assert!(swap_v2dot1::is_pair_created<TestBAPT, APT>(), 1);
+        // unstake 
+        router_v2dot1::unstake_tokens_from_pool<TestBAPT, APT>(alice, 1 * pow(10, 8));
+
+        // Based on sorting of the pairs, the pair is TestBAPT-APT
+        assert!(swap_v2dot1::is_pair_created<TestBAPT, APT>(), 1);
         
-        // let (pool_balance_x, pool_balance_y) = stake::get_rewards_fees_accumulated<TestBAPT, APT>();
+        let (pool_balance_x_before_adding_rewards, pool_balance_y_before_adding_rewards) = stake_v2dot1::get_rewards_fees_accumulated<TestBAPT, APT>();
         
-        // debug::print<u64>(&pool_balance_x);
-        // debug::print<u64>(&pool_balance_y);
+        debug::print<u64>(&pool_balance_x_before_adding_rewards);
+        debug::print<u64>(&pool_balance_y_before_adding_rewards);
+
+        // add rewards
+        router_v2dot1::add_rewards_to_pool<TestBAPT, APT, TestBAPT>(alice, 1 * pow(10, 8));
+        router_v2dot1::add_rewards_to_pool<TestBAPT, APT, APT>(alice, 1 * pow(10, 8));
         
+        let (pool_balance_x_after_adding_rewards, pool_balance_y_after_adding_rewards) = stake_v2dot1::get_rewards_fees_accumulated<TestBAPT, APT>();
+
+        debug::print<u64>(&pool_balance_x_after_adding_rewards);
+        debug::print<u64>(&pool_balance_y_after_adding_rewards);
         // treasury wallet receives the treasury fee
         // debug::print<u64>(&coin::balance<TestBAPT>(@treasury));
 

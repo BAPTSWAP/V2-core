@@ -118,6 +118,16 @@ module baptswap_v2dot1::router_v2dot1 {
         }
     }
 
+    // Add rewards to a pool
+    public entry fun add_rewards_to_pool<X, Y, CoinType>(
+        sender: &signer,
+        amount: u64
+    ) {
+        assert!(swap_v2dot1::is_pair_created<X, Y>() || swap_v2dot1::is_pair_created<Y, X>(), errors_v2dot1::pair_not_created());
+        assert!(stake_v2dot1::is_pool_created<X, Y>(), errors_v2dot1::pool_not_created());
+        stake_v2dot1::add_rewards<X, Y, CoinType>(sender, amount);
+    }
+
     fun add_swap_event_with_address_internal<X, Y>(
         sender_addr: address,
         amount_x_in: u64,

@@ -141,27 +141,6 @@ module baptswap_v2dot1::swap_v2dot1 {
         token_y: string::String
     }
 
-    public(friend) fun add_swap_event<X, Y>(
-        sender: &signer,
-        amount_x_in: u64,
-        amount_y_in: u64,
-        amount_x_out: u64,
-        amount_y_out: u64
-    ) acquires PairEventHolder {
-        let sender_addr = signer::address_of(sender);
-        let pair_event_holder = borrow_global_mut<PairEventHolder<X, Y>>(constants_v2dot1::get_resource_account_address());
-        event::emit_event<SwapEvent<X, Y>>(
-            &mut pair_event_holder.swap,
-            SwapEvent<X, Y> {
-                user: sender_addr,
-                amount_x_in,
-                amount_y_in,
-                amount_x_out,
-                amount_y_out
-            }
-        );
-    }
-
     public(friend) fun add_swap_event_with_address<X, Y>(
         sender_addr: address,
         amount_x_in: u64,
@@ -420,13 +399,27 @@ module baptswap_v2dot1::swap_v2dot1 {
             }
         );
 
+        // if X has fee on transfer, return Option<FeeOnTransferInfo<X>>
+        let fee_on_transfer_x = if (fee_on_transfer_v2dot1::is_created<X>()) {
+            option::some(fee_on_transfer_v2dot1::get_info<X>())
+        } else {
+            option::none<FeeOnTransferInfo<X>>()
+        };
+
+        // if Y has fee on transfer, return Option<FeeOnTransferInfo<Y>>
+        let fee_on_transfer_y = if (fee_on_transfer_v2dot1::is_created<Y>()) {
+            option::some(fee_on_transfer_v2dot1::get_info<Y>())
+        } else {
+            option::none<FeeOnTransferInfo<Y>>()
+        };
+            
         move_to<TokenPairMetadata<X, Y>>(
             &resource_signer,
             TokenPairMetadata {
                 creator: sender_addr,
                 k_last: 0,
-                fee_on_transfer_x: option::none<FeeOnTransferInfo<X>>(),
-                fee_on_transfer_y: option::none<FeeOnTransferInfo<Y>>(),
+                fee_on_transfer_x,
+                fee_on_transfer_y,
                 liquidity_fee: 0,
                 treasury_fee: 0,
                 team_fee: 0,
@@ -447,6 +440,16 @@ module baptswap_v2dot1::swap_v2dot1 {
                 swap: account::new_event_handle<SwapEvent<X, Y>>(&resource_signer)
             }
         );
+
+        // if X has fee on transfer, create a reward pool for X,Y
+        if (fee_on_transfer_v2dot1::is_created<X>()) {
+            stake_v2dot1::create_pool<X, X, Y>(sender, true);
+        };
+
+        // if Y has fee on transfer, create a reward pool for Y,X
+        if (fee_on_transfer_v2dot1::is_created<Y>()) {
+            stake_v2dot1::create_pool<Y, Y, X>(sender, true);
+        };
 
         // pair created event
         let token_x = type_info::type_name<X>();
