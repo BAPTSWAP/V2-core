@@ -15,7 +15,7 @@ module baptswap_v2dot1::router_v2dot1 {
 
     use std::signer;
 
-    use other_coins_testnet::asset::{USDC, USDT, WETH};
+    use bridge::asset::{USDC, USDT, WETH};
 
     public entry fun upgrade_router_contract(sender: &signer, metadata_serialized: vector<u8>, code: vector<vector<u8>>) {
         let sender_addr = signer::address_of(sender);

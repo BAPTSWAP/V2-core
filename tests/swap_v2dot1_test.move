@@ -41,7 +41,7 @@ module baptswap_v2dot1::swap_v2dot1_test {
         account::create_account_for_test(signer::address_of(dev));
         account::create_account_for_test(signer::address_of(admin));
         // account::create_account_for_test(signer::address_of(treasury));
-        resource_account::create_resource_account(dev, b"testnet_take_5", x"");
+        resource_account::create_resource_account(dev, b"mainnet_take_1", x"");
         admin_v2dot1::init_test(resource_account);
         account::create_account_for_test(signer::address_of(bapt_framework));
         coin::register<APT>(bapt_framework);    // for the deployer
