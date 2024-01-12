@@ -39,10 +39,10 @@ module baptswap_v2dot1::router_v2dot1 {
     public entry fun register_fee_on_transfer_in_a_pair<CoinType, X, Y>(sender: &signer) {
         if (swap_utils_v2dot1::sort_token_type<X, Y>()) {
             swap_v2dot1::add_fee_on_transfer_in_pair<CoinType, X, Y>(sender);
-            stake_v2dot1::create_pool<CoinType, X, Y>(sender, true);
+            stake_v2dot1::create_pool<CoinType, X, Y>(true);
         } else {
             swap_v2dot1::add_fee_on_transfer_in_pair<CoinType, Y, X>(sender);
-            stake_v2dot1::create_pool<CoinType, Y, X>(sender, true);
+            stake_v2dot1::create_pool<CoinType, Y, X>(true);
         }
     }
 

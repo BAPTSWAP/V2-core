@@ -163,7 +163,7 @@ module baptswap_v2dot1::fee_on_transfer_v2dot1 {
         assert!(deployer::is_coin_owner<CoinType>(sender), errors_v2dot1::not_owner());
         // assert new fee is not equal to the existing fee
         assert!(new_fee != fee_on_transfer_liquidity_fee, errors_v2dot1::already_initialized());
-        // assert the newer total fee is less than the threshold
+        // assert the newer total fee is equal or less than the threshold
         assert!(
             does_not_exceed_fee_on_transfer_threshold(new_fee + fee_on_transfer.rewards_fee_modifier + fee_on_transfer.team_fee_modifier), 
             errors_v2dot1::excessive_fee()
@@ -182,7 +182,7 @@ module baptswap_v2dot1::fee_on_transfer_v2dot1 {
         assert!(deployer::is_coin_owner<CoinType>(sender), errors_v2dot1::not_owner());
         // assert new fee is not equal to the existing fee
         assert!(new_fee != fee_on_transfer_rewards_fee, errors_v2dot1::already_initialized());
-        // assert the newer total fee is less than the threshold
+        // assert the newer total fee is equal or less than the threshold
         assert!(
             does_not_exceed_fee_on_transfer_threshold(new_fee + fee_on_transfer.liquidity_fee_modifier + fee_on_transfer.team_fee_modifier), 
             errors_v2dot1::excessive_fee()
@@ -201,7 +201,7 @@ module baptswap_v2dot1::fee_on_transfer_v2dot1 {
         assert!(deployer::is_coin_owner<CoinType>(sender), errors_v2dot1::not_owner());
         // assert new fee is not equal to the existing fee
         assert!(new_fee != fee_on_transfer_team_fee, errors_v2dot1::already_initialized());
-        // assert the newer total fee is less than the threshold
+        // assert the newer total fee is equal or less than the threshold
         assert!(
             does_not_exceed_fee_on_transfer_threshold(new_fee + fee_on_transfer.liquidity_fee_modifier + fee_on_transfer.rewards_fee_modifier), 
             errors_v2dot1::excessive_fee()
@@ -210,6 +210,29 @@ module baptswap_v2dot1::fee_on_transfer_v2dot1 {
         fee_on_transfer.team_fee_modifier = new_fee;
         // emit event
         emit_team_fee_updated_event(fee_on_transfer_team_fee, new_fee);
+    }
+
+    // update fee_on_transfer all fees
+    public entry fun set_all_fees<CoinType>(sender: &signer, new_liquidity_fee: u128, new_rewards_fee: u128, new_team_fee: u128) acquires FeeOnTransferInfo {
+        // assert sender is token owner of CoinType
+        assert!(deployer::is_coin_owner<CoinType>(sender), errors_v2dot1::not_owner());
+        // assert the newer total fee is equal or less than the threshold
+        assert!(
+            does_not_exceed_fee_on_transfer_threshold(new_liquidity_fee + new_rewards_fee + new_team_fee), 
+            errors_v2dot1::excessive_fee()
+        );
+        let fee_on_transfer = borrow_global_mut<FeeOnTransferInfo<CoinType>>(constants_v2dot1::get_resource_account_address());
+        let fee_on_transfer_liquidity_fee = fee_on_transfer.liquidity_fee_modifier;
+        let fee_on_transfer_rewards_fee = fee_on_transfer.rewards_fee_modifier;
+        let fee_on_transfer_team_fee = fee_on_transfer.team_fee_modifier;
+        // update the fee
+        fee_on_transfer.liquidity_fee_modifier = new_liquidity_fee;
+        fee_on_transfer.rewards_fee_modifier = new_rewards_fee;
+        fee_on_transfer.team_fee_modifier = new_team_fee;
+        // emit event
+        emit_liquidity_fee_updated_event(fee_on_transfer_liquidity_fee, new_liquidity_fee);
+        emit_rewards_fee_updated_event(fee_on_transfer_rewards_fee, new_rewards_fee);
+        emit_team_fee_updated_event(fee_on_transfer_team_fee, new_team_fee);
     }
 
     // ---------

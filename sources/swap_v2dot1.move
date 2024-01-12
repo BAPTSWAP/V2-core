@@ -6,15 +6,6 @@
         There are two fee types:
         - DEX fees: liquidity fee + treasury fee
         - Individual token fees: liquidity fee + rewards fee + team fee
-
-    Note from the original code devs: 
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        Please use swap_utils_v2dot1::sort_token_type<X,Y>()
-        before using any function
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-    TODO: 
-        
 */
 
 module baptswap_v2dot1::swap_v2dot1 {
@@ -23,7 +14,6 @@ module baptswap_v2dot1::swap_v2dot1 {
     use std::option::{Self, Option};
     use std::string;
 
-    // use aptos_std::debug;
     use aptos_std::type_info;
 
     use aptos_framework::aptos_account;
@@ -443,12 +433,12 @@ module baptswap_v2dot1::swap_v2dot1 {
 
         // if X has fee on transfer, create a reward pool for X,Y
         if (fee_on_transfer_v2dot1::is_created<X>()) {
-            stake_v2dot1::create_pool<X, X, Y>(sender, true);
+            stake_v2dot1::create_pool<X, X, Y>(true);
         };
 
         // if Y has fee on transfer, create a reward pool for Y,X
         if (fee_on_transfer_v2dot1::is_created<Y>()) {
-            stake_v2dot1::create_pool<Y, Y, X>(sender, true);
+            stake_v2dot1::create_pool<Y, Y, X>(true);
         };
 
         // pair created event
@@ -829,20 +819,12 @@ module baptswap_v2dot1::swap_v2dot1 {
         if (type_info::type_of<CoinType>() == type_info::type_of<X>()) {
             // distribute DEX fees to dex owner;
             let (_, amount_to_treasury) = calculate_dex_fees_amounts<X>(amount);
-            // let metadata = borrow_global_mut<TokenPairMetadata<X, Y>>(constants_v2dot1::get_resource_account_address());
-            // liquidity
-            // let liquidity_fee_coins = coin::withdraw<X>(signer_ref, (amount_to_liquidity as u64));
-            // coin::merge(&mut metadata.balance_x, liquidity_fee_coins);
             // treasury 
             let treasury_fee_coins = coin::withdraw<X>(signer_ref, (amount_to_treasury as u64));
             aptos_account::deposit_coins<X>(admin_v2dot1::get_treasury_address(), treasury_fee_coins);
         } else if (type_info::type_of<CoinType>() == type_info::type_of<Y>()) {
             // distribute DEX fees to dex owner;
             let (_, amount_to_treasury) = calculate_dex_fees_amounts<Y>(amount);
-            // let metadata = borrow_global_mut<TokenPairMetadata<X, Y>>(constants_v2dot1::get_resource_account_address());
-            // liquidity
-            // let liquidity_fee_coins = coin::withdraw<Y>(signer_ref, (amount_to_liquidity as u64));
-            // coin::merge(&mut metadata.balance_y, liquidity_fee_coins);
             // treasury 
             let treasury_fee_coins = coin::withdraw<Y>(signer_ref, (amount_to_treasury as u64));
             aptos_account::deposit_coins<Y>(admin_v2dot1::get_treasury_address(), treasury_fee_coins);
@@ -870,13 +852,7 @@ module baptswap_v2dot1::swap_v2dot1 {
             let (_, x_rewards_amount_from_y_ratio, x_team_amount_from_y_ratio) = if (is_fee_on_transfer_registered<Y, X, Y>()) {
                 calculate_fee_on_transfer_amounts<Y>(amount)
             } else { (0u128, 0u128, 0u128) };
-
             // extract fees
-            // let liquidity_x_fee_coins = coin::withdraw<X>(signer_ref, ((liquidity_amount_x + liquidity_amount_y) as u64));
-
-            // distribute fees
-            // liquidity
-            // coin::merge(&mut metadata.balance_x, liquidity_x_fee_coins);
             // rewards
             if (stake_v2dot1::is_pool_created<X, Y>()) {
                 let rewards_coins_to_xy_pool = coin::withdraw<X>(signer_ref, (x_rewards_amount_from_x_ratio as u64));
@@ -914,13 +890,7 @@ module baptswap_v2dot1::swap_v2dot1 {
             let (_, y_rewards_amount_from_y_ratio, y_team_amount_from_y_ratio) = if (is_fee_on_transfer_registered<Y, X, Y>()) {
                 calculate_fee_on_transfer_amounts<Y>(amount)
             } else { (0u128, 0u128, 0u128) };
-
             // extract fees
-            // let liquidity_y_fee_coins = coin::withdraw<Y>(signer_ref, ((liquidity_amount_x + liquidity_amount_y) as u64));
-
-            // distribute fees
-            // liquidity
-            // coin::merge(&mut metadata.balance_y, liquidity_y_fee_coins);
             // rewards
             if (stake_v2dot1::is_pool_created<X, Y>()) {
                 let rewards_coins_to_xy_pool = coin::withdraw<Y>(signer_ref, (y_rewards_amount_from_x_ratio as u64));
