@@ -1,6 +1,5 @@
 .aptos
 build
-packages
 
 # coverage
 .coverage_map.mvocv
