@@ -303,6 +303,7 @@ module baptswap_v2dot1::swap_v2dot1 {
         let sender_addr = signer::address_of(sender);
         let lp_amount = coin::value(&coin_lp);
         assert!(lp_amount > 0, errors_v2dot1::insufficient_liquidity());
+        // TODO: use aptos account instead
         utils_v2dot1::check_or_register_coin_store<LPToken<X, Y>>(sender);
         coin::deposit(sender_addr, coin_lp);
         coin::deposit(sender_addr, coin_left_x);
@@ -331,7 +332,9 @@ module baptswap_v2dot1::swap_v2dot1 {
         let (coins_x, coins_y) = remove_liquidity_direct<X, Y>(coins);
         let amount_x = coin::value(&coins_x);
         let amount_y = coin::value(&coins_y);
+        // TODO: use aptos account instead
         utils_v2dot1::check_or_register_coin_store<X>(sender);
+        // TODO: use aptos account instead
         utils_v2dot1::check_or_register_coin_store<Y>(sender);
         let sender_addr = signer::address_of(sender);
         coin::deposit<X>(sender_addr, coins_x);
@@ -471,6 +474,7 @@ module baptswap_v2dot1::swap_v2dot1 {
             option::fill<FeeOnTransferInfo<X>>(&mut metadata.fee_on_transfer_x, fee_on_transfer);
             toggle_all_fees<X, X, Y>(sender, true);
             // register Y; needed to receive team fees
+            // TODO: use aptos account instead
             utils_v2dot1::check_or_register_coin_store<Y>(sender);
         // if Cointype = Y, add fee_on_transfer to pair_metadata.fee_on_transfer_y
         } else {
@@ -478,6 +482,7 @@ module baptswap_v2dot1::swap_v2dot1 {
             option::fill<FeeOnTransferInfo<Y>>(&mut metadata.fee_on_transfer_y, fee_on_transfer);
             toggle_all_fees<Y, X, Y>(sender, true);
             // register X; needed to receive team fees
+            // TODO: use aptos account instead
             utils_v2dot1::check_or_register_coin_store<X>(sender);
         }
     }
@@ -491,12 +496,14 @@ module baptswap_v2dot1::swap_v2dot1 {
         let coins = coin::withdraw<X>(sender, amount_in);
         let (coins_x_out, coins_y_out) = swap_exact_x_to_y_direct<X, Y>(coins);
         let amount_out = coin::value(&coins_y_out);
+        // TODO: use aptos account instead
         utils_v2dot1::check_or_register_coin_store<Y>(sender);
         coin::destroy_zero(coins_x_out); // or others ways to drop `coins_x_out`
         coin::deposit(to, coins_y_out);
         // distribute fees 
         distribute_dex_fees<Y, X, Y>(sender, amount_out);
         distribute_fee_on_transfer_fees<Y, X, Y>(sender, amount_out);
+        // TODO: amount_out must be updated to reflect the deducted fees
         amount_out
     }
 
@@ -521,6 +528,7 @@ module baptswap_v2dot1::swap_v2dot1 {
     ): u64 acquires TokenPairReserve, TokenPairMetadata {
         let coins_in = coin::withdraw<X>(sender, amount_in);
         let (coins_x_out, coins_y_out) = swap_x_to_exact_y_direct<X, Y>(coins_in, amount_out);
+        // TODO: use aptos account instead
         utils_v2dot1::check_or_register_coin_store<Y>(sender);
         coin::destroy_zero(coins_x_out); // or others ways to drop `coins_x_out`
         coin::deposit(to, coins_y_out);
@@ -548,6 +556,7 @@ module baptswap_v2dot1::swap_v2dot1 {
         let coins = coin::withdraw<Y>(sender, amount_in);
         let (coins_x_out, coins_y_out) = swap_exact_y_to_x_direct<X, Y>(coins);
         let amount_out = coin::value<X>(&coins_x_out);
+        // TODO: use aptos account instead
         utils_v2dot1::check_or_register_coin_store<X>(sender);
         coin::deposit(to, coins_x_out);
         // distribute fees 
@@ -555,6 +564,7 @@ module baptswap_v2dot1::swap_v2dot1 {
         // based on whether X fee_on_transfer is registered
         distribute_fee_on_transfer_fees<X, X, Y>(sender, amount_out);
         coin::destroy_zero(coins_y_out); // or others ways to drop `coins_y_out`
+        // TODO: amount_out must be updated to reflect the deducted fees
         amount_out
     }
 
@@ -566,12 +576,14 @@ module baptswap_v2dot1::swap_v2dot1 {
     ): u64 acquires TokenPairReserve, TokenPairMetadata {
         let coins_in = coin::withdraw<Y>(sender, amount_in);
         let (coins_x_out, coins_y_out) = swap_y_to_exact_x_direct<X, Y>(coins_in, amount_out);
+        // TODO: use aptos account instead
         utils_v2dot1::check_or_register_coin_store<X>(sender);
         coin::deposit(to, coins_x_out);
         coin::destroy_zero(coins_y_out); // or others ways to drop `coins_y_out`
         // distribute fees 
         distribute_dex_fees<X, X, Y>(sender, amount_out);
         distribute_fee_on_transfer_fees<X, X, Y>(sender, amount_out);
+        // TODO: amount_in must be updated to reflect the deducted fees
         amount_in
     }
 
