@@ -5,13 +5,9 @@ version = "2.1.0"
 authors = []
 
 [addresses]
-# core V2
-baptswap_v2 = "0x6ee5ff12d9af89de4cb9f127bc4c484d26acda56c03536b5e3792eac94da0a36"
 # core V2 hotfix
 baptswap_v2dot1 = "e52923154e25c258d9befb0237a30b4001c63dc3bb73011c29cb3739befffcef"
 dev_v2dot1 = "438f261f7d74f1b04d3558165b0c91df8caa623f5adb8e3dc6427f8c145fbbbb"
-# coin deployer
-bapt_framework = "0xd0ec361a55b327913690b2851cec05f1e017ec6c647689cae051644f667a1ddb"
 
 admin = "6dc7c3b14905bff00bd58cce4b140b86f2bf4814bd72e8c95caec370ed5fe41c"
 treasury = "6dc7c3b14905bff00bd58cce4b140b86f2bf4814bd72e8c95caec370ed5fe41c"
@@ -44,12 +40,18 @@ rev = "main"
 subdir = "apps/bridge"
 
 [dependencies.BaptSwap]
-local = "./packages/BaptSwap"
+git = "https://github.com/BAPTSWAP/v1-core.git"
+rev = "main"
+subdir = ""
 
 [dependencies.BaptswapV2]
-local = "./packages/BaptswapV2"
+git = "https://github.com/BAPTSWAP/V2-core.git"
+rev = "dev"
+subdir = ""
 
 [dependencies.CoinDeployer]
-local = "./packages/CoinDeployer"
+git = "https://github.com/BAPTSWAP/TokenDeployer-v1.git"
+rev = "movement"
+subdir = ""
 
 [dev-dependencies]
