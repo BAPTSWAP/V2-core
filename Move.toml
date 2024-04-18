@@ -4,12 +4,11 @@ version = "1.0.0"
 authors = []
 
 [addresses]
-baptswap_v2 = "5890c79805c61ec2a81955de6046fc6fe97554f6027c06a62dd321bba3367eec"
-bapt_framework = "d0ec361a55b327913690b2851cec05f1e017ec6c647689cae051644f667a1ddb"
-dev_2 = "438f261f7d74f1b04d3558165b0c91df8caa623f5adb8e3dc6427f8c145fbbbb"
+baptswap_v2 = "91a65207f3a8ac7447da7efe3fd640ef6eaf8f68fcf07f6bec489b89fbef2cd6"
+dev_2 = "4dfbdb89ec2e6f9cf082df0fc8b4b95b0d9b4406a686b8f39bfd39ef1bb030e6"
 
-admin = "6dc7c3b14905bff00bd58cce4b140b86f2bf4814bd72e8c95caec370ed5fe41c"
-treasury = "6dc7c3b14905bff00bd58cce4b140b86f2bf4814bd72e8c95caec370ed5fe41c"
+admin = "91a65207f3a8ac7447da7efe3fd640ef6eaf8f68fcf07f6bec489b89fbef2cd6"
+treasury = "91a65207f3a8ac7447da7efe3fd640ef6eaf8f68fcf07f6bec489b89fbef2cd6"
 
 alice = "0x123"
 bob = "0x456"
@@ -18,13 +17,13 @@ bob = "0x456"
 
 [dependencies.AptosFramework]
 git = "https://github.com/aptos-labs/aptos-core.git"
-rev = "mainnet"
+rev = "main"
 subdir = "aptos-move/framework/aptos-framework"
 
 [dependencies.BaptSwap]
-local = "./packages/BaptSwap"
+local = "./BaptSwap"
 
 [dependencies.CoinDeployer]
-local = "./packages/CoinDeployer"
+local = "./CoinDeployer"
 
 [dev-dependencies]

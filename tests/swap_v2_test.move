@@ -35,11 +35,11 @@ module baptswap_v2::swap_v2_test {
 
     public fun setup_test(aptos_framework: signer, bapt_framework: &signer, dev: &signer, admin: &signer, treasury: &signer, resource_account: &signer, alice: &signer, bob: &signer) {
         let (aptos_coin_burn_cap, aptos_coin_mint_cap) = aptos_coin::initialize_for_test_without_aggregator_factory(&aptos_framework);
-        features::change_feature_flags(&aptos_framework, vector[26], vector[]);
+        // features::change_feature_flags(&aptos_framework, vector[26], vector[]);
         account::create_account_for_test(signer::address_of(dev));
         account::create_account_for_test(signer::address_of(admin));
         // account::create_account_for_test(signer::address_of(treasury));
-        resource_account::create_resource_account(dev, b"layBaptSwapV2", x"");
+        resource_account::create_resource_account(dev, b"baptswap-v2", x"");
         admin::init_test(resource_account);
         account::create_account_for_test(signer::address_of(bapt_framework));
         coin::register<APT>(bapt_framework);    // for the deployer

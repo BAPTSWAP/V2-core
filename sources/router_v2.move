@@ -3,15 +3,10 @@ module baptswap_v2::router_v2 {
     use aptos_framework::aptos_coin::{AptosCoin as APT};
     use aptos_framework::coin;
 
-    use aptos_std::type_info;
-
-    use baptswap_v2::fee_on_transfer;
     use baptswap_v2::errors;
     use baptswap_v2::stake;
     use baptswap_v2::swap_utils_v2;
     use baptswap_v2::swap_v2;
-
-    use bapt_framework::deployer;
 
     use std::signer;
 
